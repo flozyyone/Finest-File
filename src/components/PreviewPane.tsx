@@ -5,14 +5,16 @@ import {
   ZoomOut,
   Maximize2,
   RotateCcw,
+  RotateCw,
   Play,
   FileText,
   Folder,
   Film,
-  Image as ImageIcon,
+  ExternalLink,
 } from "lucide-react";
 import { FileEntry, MediaPreviewInfo } from "../types";
 import { api } from "../api";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import { formatBytes } from "../utils/format";
 import { useI18n } from "../i18n";
 import styles from "./PreviewPane.module.css";
@@ -20,18 +22,22 @@ import styles from "./PreviewPane.module.css";
 interface PreviewPaneProps {
   selectedEntry: FileEntry | null;
   onClose: () => void;
+  onOpenQuickPreview?: () => void;
 }
 
 export const PreviewPane: React.FC<PreviewPaneProps> = ({
   selectedEntry,
   onClose,
+  onOpenQuickPreview,
 }) => {
   const { dict, formatDateTime } = useI18n();
   const [previewInfo, setPreviewInfo] = useState<MediaPreviewInfo | null>(null);
   const [loading, setLoading] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1); // 1 = fit
+  const [rotation, setRotation] = useState(0);
   const [isFit, setIsFit] = useState(true);
   const [isPlayingVideo, setIsPlayingVideo] = useState(false);
+  const [videoError, setVideoError] = useState(false);
 
   // Pan state
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -42,13 +48,16 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
     if (!selectedEntry || selectedEntry.kind === "directory") {
       setPreviewInfo(null);
       setIsPlayingVideo(false);
+      setVideoError(false);
       return;
     }
 
     let active = true;
     setLoading(true);
     setIsPlayingVideo(false);
+    setVideoError(false);
     setZoomLevel(1);
+    setRotation(0);
     setIsFit(true);
     setPan({ x: 0, y: 0 });
 
@@ -95,6 +104,14 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
     setPan({ x: 0, y: 0 });
   };
 
+  const handleRotateCw = () => {
+    setRotation((r) => (r + 90) % 360);
+  };
+
+  const handleRotateCcw = () => {
+    setRotation((r) => (r - 90 + 360) % 360);
+  };
+
   // Pan handlers
   const handleMouseDown = (e: React.MouseEvent) => {
     if (isFit || zoomLevel <= 1) return;
@@ -132,16 +149,30 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
   }
 
   const isDirectory = selectedEntry.kind === "directory";
-  const isImage = previewInfo?.mediaType === "image";
-  const isVideo = previewInfo?.mediaType === "video";
+  const ext = selectedEntry.ext.toLowerCase();
+  const isImage = ["jpg", "jpeg", "png", "webp", "bmp", "gif", "tiff", "tif", "svg"].includes(ext) || previewInfo?.mediaType === "image";
+  const isVideo = ["mp4", "mkv", "mov", "webm", "avi", "wmv", "m4v"].includes(ext) || previewInfo?.mediaType === "video";
+
+  const assetUrl = selectedEntry.path ? convertFileSrc(selectedEntry.path) : "";
 
   return (
     <aside className={styles.previewPane}>
       <div className={styles.header}>
         <span className={styles.headerTitle}>{dict.view.previewPane}</span>
-        <button className={styles.closeBtn} onClick={onClose} title={dict.common.close}>
-          <X size={15} />
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          {onOpenQuickPreview && (
+            <button
+              className={styles.closeBtn}
+              onClick={onOpenQuickPreview}
+              title="Full Preview (Space)"
+            >
+              <Maximize2 size={13} />
+            </button>
+          )}
+          <button className={styles.closeBtn} onClick={onClose} title={dict.common.close}>
+            <X size={15} />
+          </button>
+        </div>
       </div>
 
       <div className={styles.content}>
@@ -150,7 +181,7 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
           <div className={styles.mediaViewport}>
             <Folder size={64} color="var(--accent)" strokeWidth={1.5} />
           </div>
-        ) : isImage && previewInfo?.thumbnailUrl ? (
+        ) : isImage ? (
           <>
             <div
               className={`${styles.mediaViewport} ${!isFit && zoomLevel > 1 ? styles.panning : ""}`}
@@ -160,13 +191,13 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
               onMouseLeave={handleMouseUp}
             >
               <img
-                src={previewInfo.thumbnailUrl}
+                src={assetUrl || previewInfo?.thumbnailUrl || ""}
                 alt={selectedEntry.name}
                 className={styles.imagePreview}
                 style={{
                   transform: isFit
-                    ? "none"
-                    : `translate(${pan.x}px, ${pan.y}px) scale(${zoomLevel})`,
+                    ? `rotate(${rotation}deg)`
+                    : `translate(${pan.x}px, ${pan.y}px) scale(${zoomLevel}) rotate(${rotation}deg)`,
                 }}
                 draggable={false}
               />
@@ -206,6 +237,14 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
 
               <button
                 className={styles.previewToolBtn}
+                onClick={handleRotateCw}
+                title="Rotate Clockwise"
+              >
+                <RotateCw size={13} />
+              </button>
+
+              <button
+                className={styles.previewToolBtn}
                 onClick={handleActualSize}
                 title={dict.view.actualSize}
               >
@@ -216,14 +255,30 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
         ) : isVideo ? (
           <div className={styles.mediaViewport}>
             {isPlayingVideo ? (
-              <video
-                controls
-                autoPlay
-                className={styles.videoElement}
-                src={selectedEntry.path ? `asset://localhost/${encodeURIComponent(selectedEntry.path)}` : ""}
-              >
-                {dict.errors.unexpected}
-              </video>
+              videoError ? (
+                <div style={{ textAlign: "center", padding: 16 }}>
+                  <Film size={40} color="var(--accent)" />
+                  <p style={{ fontSize: 12, margin: "8px 0" }}>Format requires external player</p>
+                  <button
+                    className={styles.previewToolBtn}
+                    style={{ width: "auto", padding: "4px 8px" }}
+                    onClick={() => api.openItemDefault(selectedEntry.path)}
+                  >
+                    <ExternalLink size={13} />
+                    <span style={{ marginLeft: 4 }}>{dict.operations.openDefault}</span>
+                  </button>
+                </div>
+              ) : (
+                <video
+                  controls
+                  autoPlay
+                  className={styles.videoElement}
+                  src={assetUrl}
+                  onError={() => setVideoError(true)}
+                >
+                  {dict.errors.unexpected}
+                </video>
+              )
             ) : (
               <div className={styles.videoContainer}>
                 {previewInfo?.thumbnailUrl ? (
@@ -301,6 +356,20 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
               </span>
             </div>
           ) : null}
+
+          {!isDirectory && (
+            <div style={{ marginTop: 10, display: "flex", gap: 6 }}>
+              <button
+                className={styles.previewToolBtn}
+                style={{ width: "100%", height: 28, fontSize: 11.5, gap: 6, display: "flex", alignItems: "center", justifyContent: "center" }}
+                onClick={() => api.openItemDefault(selectedEntry.path)}
+                title={dict.operations.openDefault}
+              >
+                <ExternalLink size={13} />
+                <span>{dict.operations.openDefault}</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </aside>

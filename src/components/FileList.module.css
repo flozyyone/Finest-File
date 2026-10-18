@@ -199,8 +199,6 @@
 /* Grid view styles */
 .gridSubContainer {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
-  grid-auto-rows: 96px;
   gap: 8px;
   padding: 8px 12px 14px 12px;
 }
@@ -209,12 +207,14 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 6px;
+  justify-content: flex-start;
+  padding: 6px 4px;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  gap: 6px;
+  gap: 4px;
   text-align: center;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .gridItem:hover {
@@ -231,14 +231,17 @@
   justify-content: center;
   position: relative;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .thumbnailImg {
   max-width: 100%;
   max-height: 100%;
+  width: auto;
+  height: auto;
   object-fit: contain;
   border-radius: var(--radius-sm);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
   user-select: none;
   -webkit-user-drag: none;
   pointer-events: none;

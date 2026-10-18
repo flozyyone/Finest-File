@@ -20,6 +20,7 @@ import { JobsPanel } from "./components/JobsPanel";
 import { SettingsModal } from "./components/SettingsModal";
 import { ShortcutModal } from "./components/ShortcutModal";
 import { PreviewPane } from "./components/PreviewPane";
+import { QuickPreviewModal } from "./components/QuickPreviewModal";
 import { isInputFocused, matchesShortcutId } from "./shortcuts/registry";
 import { undoStack } from "./utils/undoStack";
 import { I18nProvider, detectInitialLanguage, getLanguageInfo, getDictionary } from "./i18n";
@@ -107,6 +108,7 @@ export const App: React.FC = () => {
   const [isShortcutModalOpen, setIsShortcutModalOpen] = useState(false);
   const [gridZoom, setGridZoom] = useState(96);
   const [previewPaneOpen, setPreviewPaneOpen] = useState(false);
+  const [quickPreviewPath, setQuickPreviewPath] = useState<string | null>(null);
 
   const MIN_ZOOM = 32;
   const MAX_ZOOM = 320;
@@ -114,10 +116,11 @@ export const App: React.FC = () => {
   const ZOOM_STEP = 16;
 
   const handleZoomIn = useCallback(() => {
+    setViewMode("grid");
     setGridZoom((z) => {
       const clamped = Math.min(MAX_ZOOM, z + ZOOM_STEP);
       setSettings((s) => {
-        const newSettings = { ...s, gridPixelSize: clamped };
+        const newSettings = { ...s, gridPixelSize: clamped, defaultViewMode: "grid" as const };
         api.updateSettings(newSettings).catch(console.error);
         return newSettings;
       });
@@ -127,6 +130,15 @@ export const App: React.FC = () => {
 
   const handleZoomOut = useCallback(() => {
     setGridZoom((z) => {
+      if (z <= MIN_ZOOM) {
+        setViewMode("details");
+        setSettings((s) => {
+          const newSettings = { ...s, defaultViewMode: "details" as const };
+          api.updateSettings(newSettings).catch(console.error);
+          return newSettings;
+        });
+        return MIN_ZOOM;
+      }
       const clamped = Math.max(MIN_ZOOM, z - ZOOM_STEP);
       setSettings((s) => {
         const newSettings = { ...s, gridPixelSize: clamped };
@@ -138,9 +150,10 @@ export const App: React.FC = () => {
   }, []);
 
   const handleZoomReset = useCallback(() => {
+    setViewMode("grid");
     setGridZoom(DEFAULT_ZOOM);
     setSettings((s) => {
-      const newSettings = { ...s, gridPixelSize: DEFAULT_ZOOM };
+      const newSettings = { ...s, gridPixelSize: DEFAULT_ZOOM, defaultViewMode: "grid" as const };
       api.updateSettings(newSettings).catch(console.error);
       return newSettings;
     });
@@ -148,6 +161,9 @@ export const App: React.FC = () => {
 
   const handleZoomChange = useCallback((newZoom: number) => {
     const clamped = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newZoom));
+    if (clamped > MIN_ZOOM) {
+      setViewMode("grid");
+    }
     setGridZoom(clamped);
     setSettings((s) => {
       const newSettings = { ...s, gridPixelSize: clamped };
@@ -168,18 +184,40 @@ export const App: React.FC = () => {
     });
   }, []);
 
-  // Prevent browser/webview whole-window zoom when Ctrl is held
+  // Globally intercept Ctrl + Mouse Wheel for pixel-based zoom across the file view
   useEffect(() => {
+    let wheelAcc = 0;
+    let wheelTimer: ReturnType<typeof setTimeout> | null = null;
+
     const handleGlobalWheel = (e: WheelEvent) => {
       if (e.ctrlKey) {
+        // Prevent default browser/webview whole-window zoom
         e.preventDefault();
+        e.stopPropagation();
+
+        wheelAcc += e.deltaY;
+        if (wheelTimer) clearTimeout(wheelTimer);
+        wheelTimer = setTimeout(() => {
+          wheelAcc = 0;
+        }, 150);
+
+        const stepThreshold = 18;
+        if (wheelAcc <= -stepThreshold) {
+          handleZoomIn();
+          wheelAcc = 0;
+        } else if (wheelAcc >= stepThreshold) {
+          handleZoomOut();
+          wheelAcc = 0;
+        }
       }
     };
+
     window.addEventListener("wheel", handleGlobalWheel, { passive: false });
     return () => {
       window.removeEventListener("wheel", handleGlobalWheel);
+      if (wheelTimer) clearTimeout(wheelTimer);
     };
-  }, []);
+  }, [handleZoomIn, handleZoomOut]);
 
   // Load system info & settings on startup
   useEffect(() => {
@@ -527,6 +565,10 @@ export const App: React.FC = () => {
       }
       // Escape
       else if (isTriggered("nav.escape")) {
+        if (quickPreviewPath) {
+          setQuickPreviewPath(null);
+          return;
+        }
         setContextMenu(null);
         setIsShortcutModalOpen(false);
         setRenamingPath(null);
@@ -627,6 +669,16 @@ export const App: React.FC = () => {
         e.preventDefault();
         togglePreviewPane();
       }
+      // Quick Preview Modal (Space)
+      else if (e.code === "Space" && !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey) {
+        if (quickPreviewPath) {
+          e.preventDefault();
+          setQuickPreviewPath(null);
+        } else if (selectedPaths.length > 0) {
+          e.preventDefault();
+          setQuickPreviewPath(selectedPaths[0]);
+        }
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -642,6 +694,7 @@ export const App: React.FC = () => {
     tabs,
     activeTabId,
     settings.customShortcuts,
+    quickPreviewPath,
   ]);
 
   const handleSelect = (entry: FileEntry, multi: boolean, range: boolean) => {
@@ -872,12 +925,14 @@ export const App: React.FC = () => {
               onZoomIn={handleZoomIn}
               onZoomOut={handleZoomOut}
               onGoUp={navigateUp}
+              onSpacePress={(path) => setQuickPreviewPath(path)}
             />
 
             {previewPaneOpen && (
               <PreviewPane
                 selectedEntry={entries.find((e) => selectedPaths.includes(e.path)) || null}
                 onClose={() => setPreviewPaneOpen(false)}
+                onOpenQuickPreview={() => selectedPaths.length > 0 && setQuickPreviewPath(selectedPaths[0])}
               />
             )}
           </div>
@@ -906,6 +961,11 @@ export const App: React.FC = () => {
           onOpenWith={() => {
             if (contextMenu.selected.length === 1) {
               api.openItemWith(contextMenu.selected[0].path);
+            }
+          }}
+          onQuickPreview={() => {
+            if (contextMenu.selected.length > 0) {
+              setQuickPreviewPath(contextMenu.selected[0].path);
             }
           }}
           onCopy={handleCopy}
@@ -957,6 +1017,19 @@ export const App: React.FC = () => {
           }}
           prefs={viewPreferences}
           onPrefsChange={handlePrefsChange}
+        />
+      )}
+
+      {quickPreviewPath && (
+        <QuickPreviewModal
+          currentPath={quickPreviewPath}
+          allEntries={entries}
+          onClose={() => setQuickPreviewPath(null)}
+          onNavigate={(newPath) => {
+            setQuickPreviewPath(newPath);
+            const found = entries.find((e) => e.path === newPath);
+            if (found) handleSelect(found, false, false);
+          }}
         />
       )}
 

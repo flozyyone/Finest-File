@@ -19,6 +19,7 @@ import {
   ChevronRight,
   Check,
   RefreshCw,
+  Eye,
 } from "lucide-react";
 import { useI18n } from "../i18n";
 import styles from "./ContextMenu.module.css";
@@ -43,6 +44,7 @@ export interface ContextMenuProps {
   onExtractArchive: () => void;
   onProperties: () => void;
   onRefresh?: () => void;
+  onQuickPreview?: () => void;
   viewMode?: "details" | "grid";
   onViewModeChange?: (mode: "details" | "grid") => void;
   prefs?: ViewPreferences;
@@ -69,6 +71,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   onExtractArchive,
   onProperties,
   onRefresh,
+  onQuickPreview,
   viewMode,
   onViewModeChange,
   prefs,
@@ -132,6 +135,13 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
             <button className={styles.item} onClick={() => { onOpenWith(); onClose(); }}>
               <span>{dict.operations.openWith}</span>
             </button>
+            {isSingle && onQuickPreview && (
+              <button className={styles.item} onClick={() => { onQuickPreview(); onClose(); }}>
+                <Eye size={15} />
+                <span>Quick Preview</span>
+                <span className={styles.shortcut}>Space</span>
+              </button>
+            )}
 
             {isArchive && (
               <button className={styles.item} onClick={() => { onExtractArchive(); onClose(); }}>

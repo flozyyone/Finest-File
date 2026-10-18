@@ -5,6 +5,7 @@ import { formatBytes } from "../utils/format";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useI18n } from "../i18n";
 import { api } from "../api";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import styles from "./FileList.module.css";
 
 const THUMBNAIL_EXTS = new Set([
@@ -30,6 +31,7 @@ interface FileListProps {
   onZoomIn?: () => void;
   onZoomOut?: () => void;
   onGoUp?: () => void;
+  onSpacePress?: (path: string) => void;
 }
 
 export const FileList: React.FC<FileListProps> = ({
@@ -50,11 +52,14 @@ export const FileList: React.FC<FileListProps> = ({
   onZoomIn,
   onZoomOut,
   onGoUp,
+  onSpacePress,
 }) => {
   const { dict, formatDateTime, dir } = useI18n();
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
   const containerRef = useRef<HTMLDivElement>(null);
+  const loadedPathsRef = useRef<Set<string>>(new Set());
+  const fetchingPathsRef = useRef<Set<string>>(new Set());
 
   const toggleGroup = (key: string) => {
     setCollapsedGroups((prev) => ({
@@ -85,7 +90,7 @@ export const FileList: React.FC<FileListProps> = ({
     }
   }, [selectedPaths]);
 
-  // Lazy thumbnail loader for visible media items in grid view
+  // Fast offline thumbnail loader for media items
   useEffect(() => {
     if (viewMode !== "grid") return;
 
@@ -94,33 +99,61 @@ export const FileList: React.FC<FileListProps> = ({
       (item) =>
         item.kind !== "directory" &&
         THUMBNAIL_EXTS.has(item.ext.toLowerCase()) &&
-        !thumbnails[item.path]
+        !loadedPathsRef.current.has(item.path) &&
+        !fetchingPathsRef.current.has(item.path)
     );
 
     if (itemsToFetch.length === 0) return;
 
-    // Fetch batch with bounded concurrency
-    const batch = itemsToFetch.slice(0, 48);
+    // For standard webview images, convertFileSrc is instant offline!
+    const newThumbs: Record<string, string> = {};
+    const remainingToFetch: typeof itemsToFetch = [];
+
+    for (const item of itemsToFetch) {
+      const ext = item.ext.toLowerCase();
+      if (["jpg", "jpeg", "png", "webp", "gif", "svg", "bmp"].includes(ext)) {
+        try {
+          const src = convertFileSrc(item.path);
+          newThumbs[item.path] = src;
+          loadedPathsRef.current.add(item.path);
+        } catch {
+          remainingToFetch.push(item);
+        }
+      } else {
+        remainingToFetch.push(item);
+      }
+    }
+
+    if (Object.keys(newThumbs).length > 0) {
+      setThumbnails((prev) => ({ ...prev, ...newThumbs }));
+    }
+
+    // For remaining items (videos, TIFF, etc.), query getFileThumbnail in batches
+    const batch = remainingToFetch.slice(0, 32);
     for (const item of batch) {
+      fetchingPathsRef.current.add(item.path);
       api
         .getFileThumbnail(
           item.path,
           Math.min(320, Math.max(96, Math.round(gridZoom * 1.5)))
         )
         .then((res) => {
+          fetchingPathsRef.current.delete(item.path);
           if (active && res?.dataUrl) {
+            loadedPathsRef.current.add(item.path);
             setThumbnails((prev) => ({ ...prev, [item.path]: res.dataUrl }));
           }
         })
         .catch(() => {
-          // Fallback cleanly to generic icon
+          fetchingPathsRef.current.delete(item.path);
+          loadedPathsRef.current.add(item.path);
         });
     }
 
     return () => {
       active = false;
     };
-  }, [allItems, viewMode, gridZoom, thumbnails]);
+  }, [allItems, viewMode, gridZoom]);
 
   const handleRowClick = (e: React.MouseEvent, entry: FileEntry) => {
     e.stopPropagation();
@@ -139,6 +172,11 @@ export const FileList: React.FC<FileListProps> = ({
           e.preventDefault();
           onOpen(found);
         }
+      }
+    } else if (e.code === "Space") {
+      if (selectedPaths.length > 0 && onSpacePress) {
+        e.preventDefault();
+        onSpacePress(selectedPaths[0]);
       }
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -176,46 +214,6 @@ export const FileList: React.FC<FileListProps> = ({
     }
   };
 
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    let accumulator = 0;
-    let resetTimer: ReturnType<typeof setTimeout> | null = null;
-
-    const handleWheel = (e: WheelEvent) => {
-      if (e.ctrlKey) {
-        // Exclusively consume wheel event for zooming the file view
-        e.preventDefault();
-        e.stopPropagation();
-
-        accumulator += e.deltaY;
-        if (resetTimer) clearTimeout(resetTimer);
-        resetTimer = setTimeout(() => {
-          accumulator = 0;
-        }, 200);
-
-        const threshold = 30;
-        if (accumulator <= -threshold) {
-          onZoomIn?.();
-          accumulator = 0;
-        } else if (accumulator >= threshold) {
-          onZoomOut?.();
-          accumulator = 0;
-        }
-      }
-      // When e.ctrlKey is false:
-      // DO NOT call e.preventDefault() or e.stopPropagation()!
-      // Native smooth scrolling scrolls the listContainer normally!
-    };
-
-    container.addEventListener("wheel", handleWheel, { passive: false });
-    return () => {
-      container.removeEventListener("wheel", handleWheel);
-      if (resetTimer) clearTimeout(resetTimer);
-    };
-  }, [onZoomIn, onZoomOut]);
-
   if (totalItemsCount === 0) {
     return (
       <div
@@ -242,7 +240,7 @@ export const FileList: React.FC<FileListProps> = ({
       <div
         key={entry.path}
         className={`${styles.gridItem} ${isSelected ? styles.selected : ""}`}
-        style={{ height: `${gridZoom + 26}px` }}
+        style={{ height: `${gridZoom + 30}px`, minHeight: `${gridZoom + 30}px` }}
         onClick={(e) => handleRowClick(e, entry)}
         onDoubleClick={() => onOpen(entry)}
         onContextMenu={(e) => {
@@ -254,7 +252,7 @@ export const FileList: React.FC<FileListProps> = ({
       >
         <div
           className={styles.gridIcon}
-          style={{ width: `${gridZoom - 12}px`, height: `${thumbBoxHeight}px` }}
+          style={{ width: "100%", height: `${thumbBoxHeight}px` }}
         >
           {thumbUrl ? (
             <img
