@@ -1,0 +1,88 @@
+.tabBar {
+  display: flex;
+  align-items: center;
+  background-color: var(--bg-app);
+  height: 36px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--border-subtle);
+  user-select: none;
+}
+
+.tabsContainer {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  overflow-x: auto;
+  height: 100%;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 10px;
+  background-color: transparent;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  cursor: pointer;
+  max-width: 180px;
+  min-width: 100px;
+  border: 1px solid transparent;
+  border-bottom: none;
+}
+
+.tab:hover:not(.activeTab) {
+  background-color: var(--bg-hover);
+}
+
+.tab.activeTab {
+  background-color: var(--bg-surface);
+  border-color: var(--border-subtle);
+  font-weight: 500;
+  color: var(--text-main);
+}
+
+.tabTitle {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.closeBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 2px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.closeBtn:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-main);
+}
+
+.newTabBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+
+.newTabBtn:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-main);
+}

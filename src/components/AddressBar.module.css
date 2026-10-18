@@ -1,0 +1,139 @@
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background-color: var(--bg-app);
+  border-bottom: 1px solid var(--border-subtle);
+  user-select: none;
+}
+
+.navButtons {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.iconBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-main);
+  transition: background-color 0.1s;
+}
+
+.iconBtn:hover:not(:disabled) {
+  background-color: var(--bg-hover);
+}
+
+.iconBtn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.addressBox {
+  flex: 1;
+  height: 30px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  cursor: text;
+  overflow: hidden;
+}
+
+.addressBox:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  overflow-x: auto;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.crumbBtn {
+  background: transparent;
+  border: none;
+  font-size: 12.5px;
+  color: var(--text-main);
+  padding: 2px 6px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.crumbBtn:hover {
+  background-color: var(--bg-hover);
+}
+
+.separator {
+  color: var(--text-subtle);
+  flex-shrink: 0;
+}
+
+.addressInput {
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 12.5px;
+  color: var(--text-main);
+}
+
+.searchBox {
+  width: 240px;
+  height: 30px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  gap: 6px;
+}
+
+.searchBox:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.searchIcon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.searchInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 12.5px;
+  color: var(--text-main);
+}
+
+.clearSearchBtn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clearSearchBtn:hover {
+  color: var(--text-main);
+}

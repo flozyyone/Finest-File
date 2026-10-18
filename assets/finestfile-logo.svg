@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <!-- Refined, subtle gradient for folder back -->
+    <linearGradient id="backGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#2b6cb0" />
+      <stop offset="100%" stop-color="#1e4e8c" />
+    </linearGradient>
+
+    <!-- Clean, crisp front flap gradient -->
+    <linearGradient id="frontGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6" />
+      <stop offset="100%" stop-color="#2563eb" />
+    </linearGradient>
+
+    <!-- Subtle accent sheet representing structured files -->
+    <linearGradient id="sheetGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95" />
+      <stop offset="100%" stop-color="#e2e8f0" stop-opacity="0.9" />
+    </linearGradient>
+    
+    <filter id="subtleShadow" x="-5%" y="-5%" width="110%" height="115%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#0f172a" flood-opacity="0.18" />
+    </filter>
+  </defs>
+
+  <!-- Back folder plate & tab -->
+  <path d="M 28 64 C 28 55.163 35.163 48 44 48 L 96 48 C 104 48 109 52 115 59 L 127 75 C 131 80 137 84 145 84 L 212 84 C 220.837 84 228 91.163 228 100 L 228 196 C 228 204.837 220.837 212 212 212 L 44 212 C 35.163 212 28 204.837 28 196 Z"
+        fill="url(#backGrad)" />
+
+  <!-- Inner document sheet peek -->
+  <rect x="52" y="70" width="152" height="80" rx="4" fill="url(#sheetGrad)" />
+  <line x1="68" y1="88" x2="116" y2="88" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" />
+  <line x1="68" y1="102" x2="148" y2="102" stroke="#cbd5e1" stroke-width="4" stroke-linecap="round" />
+
+  <!-- Front folder flap with shadow -->
+  <path d="M 28 116 C 28 106 36 98 46 98 L 210 98 C 220 98 228 106 228 116 L 228 196 C 228 204.837 220.837 212 212 212 L 44 212 C 35.163 212 28 204.837 28 196 Z"
+        fill="url(#frontGrad)"
+        filter="url(#subtleShadow)" />
+
+  <!-- Elegant subtle top-edge highlight on front flap -->
+  <path d="M 32 116 C 32 108 38 100 46 100 L 210 100 C 218 100 224 108 224 116"
+        fill="none"
+        stroke="#60a5fa"
+        stroke-width="1.5"
+        stroke-linecap="round"
+        opacity="0.8" />
+</svg>

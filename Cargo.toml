@@ -1,0 +1,18 @@
+[workspace]
+resolver = "2"
+members = ["crates/finestfile-core", "src-tauri"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+authors = ["FinestFile contributors"]
+repository = "https://github.com/finestfile/finestfile"
+rust-version = "1.80"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Minimal monochrome folder silhouette for taskbars and high-contrast UI -->
+  <path d="M 28 64 C 28 55.163 35.163 48 44 48 L 96 48 C 104 48 109 52 115 59 L 127 75 C 131 80 137 84 145 84 L 212 84 C 220.837 84 228 91.163 228 100 L 228 116 L 46 116 C 36 116 28 124 28 134 L 28 64 Z"
+        fill="currentColor" opacity="0.6" />
+  <rect x="28" y="112" width="200" height="96" rx="12" fill="currentColor" />
+</svg>

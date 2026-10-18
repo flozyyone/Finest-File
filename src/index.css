@@ -1,0 +1,108 @@
+:root {
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", system-ui, Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: "Cascadia Code", "Consolas", monospace;
+
+  /* Restrained neutral palette (Light Theme) */
+  --bg-app: #f3f3f3;
+  --bg-sidebar: #eaeaea;
+  --bg-surface: #ffffff;
+  --bg-hover: rgba(0, 0, 0, 0.04);
+  --bg-selected: rgba(0, 95, 184, 0.08);
+  --bg-active: rgba(0, 0, 0, 0.08);
+  
+  --border-subtle: #e5e5e5;
+  --border-strong: #d1d5db;
+
+  --text-main: #1c1c1c;
+  --text-muted: #5c5c5c;
+  --text-subtle: #8a8a8a;
+
+  /* Restrained Windows 11 accent color */
+  --accent: #005fb8;
+  --accent-hover: #004f9e;
+  --accent-text: #ffffff;
+
+  --status-success: #107c41;
+  --status-warning: #b7791f;
+  --status-error: #c42b1c;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+
+  --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-popup: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="dark"] {
+  /* Restrained neutral palette (Dark Theme) - Charcoal & Neutral Dark surfaces */
+  --bg-app: #202020;
+  --bg-sidebar: #181818;
+  --bg-surface: #2b2b2b;
+  --bg-hover: rgba(255, 255, 255, 0.06);
+  --bg-selected: rgba(96, 205, 255, 0.12);
+  --bg-active: rgba(255, 255, 255, 0.1);
+  
+  --border-subtle: #333333;
+  --border-strong: #404040;
+
+  --text-main: #f0f0f0;
+  --text-muted: #a6a6a6;
+  --text-subtle: #737373;
+
+  --accent: #60cdff;
+  --accent-hover: #75d4ff;
+  --accent-text: #000000;
+
+  --status-success: #54b054;
+  --status-warning: #d97706;
+  --status-error: #ff99a4;
+
+  --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-popup: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-main);
+  background-color: var(--bg-app);
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input, select {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+input[type="text"], input[type="search"] {
+  user-select: text;
+}
+
+/* Custom subtle scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--text-subtle);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}

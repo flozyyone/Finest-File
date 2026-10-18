@@ -1,0 +1,309 @@
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal {
+  width: 580px;
+  height: 480px;
+  background-color: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-popup);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  user-select: none;
+}
+
+.header {
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.closeBtn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+}
+
+.closeBtn:hover {
+  color: var(--text-main);
+}
+
+.content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.nav {
+  width: 170px;
+  background-color: var(--bg-sidebar);
+  border-right: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  padding: 8px 6px;
+  gap: 2px;
+}
+
+.navItem {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.navItem:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-main);
+}
+
+.navItem.activeNav {
+  background-color: var(--bg-selected);
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.tabContent {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sectionTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 12.5px;
+}
+
+.row select {
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background-color: var(--bg-surface);
+  color: var(--text-main);
+}
+
+.checkboxRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  margin-top: 4px;
+}
+
+.indexStatsBox {
+  background-color: var(--bg-app);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.statLine {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.btnRow {
+  display: flex;
+  gap: 8px;
+}
+
+.actionBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--text-main);
+}
+
+.actionBtn:hover {
+  background-color: var(--bg-hover);
+}
+
+.rootsList {
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  max-height: 100px;
+  overflow-y: auto;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background-color: var(--bg-app);
+}
+
+.noRoots {
+  padding: 6px;
+  font-size: 11.5px;
+  color: var(--text-subtle);
+}
+
+.rootItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 11.5px;
+  background-color: var(--bg-surface);
+}
+
+.removeRootBtn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+}
+
+.removeRootBtn:hover {
+  color: var(--status-error);
+}
+
+.addRootRow {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.addRootRow input {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-surface);
+  color: var(--text-main);
+  font-size: 12px;
+}
+
+.addRootRow button {
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-hover);
+  border: 1px solid var(--border-strong);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.aboutHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.aboutFeatures {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.featureItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+}
+
+.licenseInfo {
+  margin-top: 20px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.footer {
+  height: 48px;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 16px;
+  gap: 8px;
+}
+
+.cancelBtn {
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.cancelBtn:hover {
+  background-color: var(--bg-hover);
+}
+
+.saveBtn {
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  background-color: var(--accent);
+  color: var(--accent-text);
+  border: none;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.saveBtn:hover {
+  background-color: var(--accent-hover);
+}
