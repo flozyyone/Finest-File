@@ -12,6 +12,8 @@ import {
   Check,
   ChevronDown,
   RotateCcw,
+  Minus,
+  Plus,
 } from "lucide-react";
 import { useI18n } from "../i18n";
 import styles from "./ViewToolbar.module.css";
@@ -22,6 +24,11 @@ interface ViewToolbarProps {
   prefs: ViewPreferences;
   onPrefsChange: (newPrefs: ViewPreferences) => void;
   onResetView: () => void;
+  zoom: number;
+  onZoomChange: (zoom: number) => void;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onZoomReset: () => void;
 }
 
 export const ViewToolbar: React.FC<ViewToolbarProps> = ({
@@ -30,6 +37,11 @@ export const ViewToolbar: React.FC<ViewToolbarProps> = ({
   prefs,
   onPrefsChange,
   onResetView,
+  zoom,
+  onZoomChange,
+  onZoomIn,
+  onZoomOut,
+  onZoomReset,
 }) => {
   const { dict } = useI18n();
   const [sortOpen, setSortOpen] = useState(false);
@@ -262,6 +274,51 @@ export const ViewToolbar: React.FC<ViewToolbarProps> = ({
             )}
           </div>
         )}
+      </div>
+
+      <div className={styles.divider} />
+
+      {/* Size / Zoom Control */}
+      <div className={styles.zoomGroup} title={dict.view.view}>
+        <button
+          className={styles.zoomBtn}
+          onClick={onZoomOut}
+          disabled={zoom <= 48}
+          title={dict.view.zoomOut}
+          aria-label={dict.view.zoomOut}
+        >
+          <Minus size={13} />
+        </button>
+
+        <input
+          type="range"
+          className={styles.zoomSlider}
+          min={48}
+          max={256}
+          step={8}
+          value={zoom}
+          onChange={(e) => onZoomChange(Number(e.target.value))}
+          title={`${zoom}px`}
+          aria-label={dict.view.view}
+        />
+
+        <button
+          className={styles.zoomBtn}
+          onClick={onZoomIn}
+          disabled={zoom >= 256}
+          title={dict.view.zoomIn}
+          aria-label={dict.view.zoomIn}
+        >
+          <Plus size={13} />
+        </button>
+
+        <button
+          className={styles.zoomIndicator}
+          onClick={onZoomReset}
+          title={dict.view.resetZoom}
+        >
+          {zoom}px
+        </button>
       </div>
 
       <div className={styles.divider} />

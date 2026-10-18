@@ -88,63 +88,65 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside className={styles.sidebar}>
-      <div className={styles.section}>
-        <div className={styles.sectionHeader}>{dict.nav.quickAccess}</div>
-        {knownFolders.map((kf) => (
-          <button
-            key={kf.id}
-            className={`${styles.item} ${isSelected(kf.path) ? styles.active : ""}`}
-            onClick={() => onNavigate(kf.path)}
-            title={kf.path}
-          >
-            <span className={styles.itemIcon}>{getKnownIcon(kf.id)}</span>
-            <span className={styles.itemLabel}>{getKnownFolderName(kf)}</span>
-          </button>
-        ))}
-      </div>
-
-      <div className={styles.section}>
-        <div className={styles.sectionHeader}>{dict.nav.drives}</div>
-        {drives.map((d) => {
-          const usedPct =
-            d.totalBytes && d.freeBytes
-              ? Math.round(((d.totalBytes - d.freeBytes) / d.totalBytes) * 100)
-              : 0;
-
-          return (
+      <div className={styles.navBody}>
+        <div className={styles.section}>
+          <div className={styles.sectionHeader}>{dict.nav.quickAccess}</div>
+          {knownFolders.map((kf) => (
             <button
-              key={d.path}
-              className={`${styles.driveItem} ${isSelected(d.path) ? styles.active : ""}`}
-              onClick={() => onNavigate(d.path)}
-              title={`${d.path} (${d.fileSystem || "drive"})\n${formatBytes(d.freeBytes)} / ${formatBytes(d.totalBytes)}`}
+              key={kf.id}
+              className={`${styles.item} ${isSelected(kf.path) ? styles.active : ""}`}
+              onClick={() => onNavigate(kf.path)}
+              title={kf.path}
             >
-              <div className={styles.driveRow}>
-                <span className={styles.itemIcon}>
-                  <HardDrive size={16} />
-                </span>
-                <span className={`${styles.itemLabel} driveLetter`}>
-                  {d.label ? `${d.label} (${d.letter}:)` : `${d.letter}:`}
-                </span>
-              </div>
-              {d.totalBytes ? (
-                <div className={styles.driveCapacity}>
-                  <div className={styles.driveBar}>
-                    <div
-                      className={styles.driveFill}
-                      style={{
-                        width: `${usedPct}%`,
-                        backgroundColor: usedPct > 90 ? "var(--status-error)" : "var(--accent)",
-                      }}
-                    />
-                  </div>
-                  <span className={`${styles.driveText} fileSize`}>
-                    {formatBytes(d.freeBytes)}
+              <span className={styles.itemIcon}>{getKnownIcon(kf.id)}</span>
+              <span className={styles.itemLabel}>{getKnownFolderName(kf)}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className={styles.section}>
+          <div className={styles.sectionHeader}>{dict.nav.drives}</div>
+          {drives.map((d) => {
+            const usedPct =
+              d.totalBytes && d.freeBytes
+                ? Math.round(((d.totalBytes - d.freeBytes) / d.totalBytes) * 100)
+                : 0;
+
+            return (
+              <button
+                key={d.path}
+                className={`${styles.driveItem} ${isSelected(d.path) ? styles.active : ""}`}
+                onClick={() => onNavigate(d.path)}
+                title={`${d.path} (${d.fileSystem || "drive"})\n${formatBytes(d.freeBytes)} / ${formatBytes(d.totalBytes)}`}
+              >
+                <div className={styles.driveRow}>
+                  <span className={styles.itemIcon}>
+                    <HardDrive size={16} />
+                  </span>
+                  <span className={`${styles.itemLabel} driveLetter`}>
+                    {d.label ? `${d.label} (${d.letter}:)` : `${d.letter}:`}
                   </span>
                 </div>
-              ) : null}
-            </button>
-          );
-        })}
+                {d.totalBytes ? (
+                  <div className={styles.driveCapacity}>
+                    <div className={styles.driveBar}>
+                      <div
+                        className={styles.driveFill}
+                        style={{
+                          width: `${usedPct}%`,
+                          backgroundColor: usedPct > 90 ? "var(--status-error)" : "var(--accent)",
+                        }}
+                      />
+                    </div>
+                    <span className={`${styles.driveText} fileSize`}>
+                      {formatBytes(d.freeBytes)}
+                    </span>
+                  </div>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className={styles.footer}>

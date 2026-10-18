@@ -6,6 +6,20 @@
   flex-direction: column;
   user-select: none;
   flex-shrink: 0;
+  height: 100%;
+  min-height: 0;
+}
+
+:global([dir="rtl"]) .sidebar {
+  border-right: none;
+  border-left: 1px solid var(--border-subtle);
+}
+
+.navBody {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
 }
 
 .section {
@@ -121,6 +135,7 @@
 
 .footer {
   margin-top: auto;
+  flex-shrink: 0;
   border-top: 1px solid var(--border-subtle);
   padding: 8px 6px;
   display: flex;

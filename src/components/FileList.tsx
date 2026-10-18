@@ -132,16 +132,45 @@ export const FileList: React.FC<FileListProps> = ({
     }
   };
 
-  const handleWheel = (e: React.WheelEvent) => {
-    if (e.ctrlKey) {
-      e.preventDefault();
-      if (e.deltaY < 0 && onZoomIn) {
-        onZoomIn();
-      } else if (e.deltaY > 0 && onZoomOut) {
-        onZoomOut();
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    let accumulator = 0;
+    let resetTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey) {
+        // Exclusively consume wheel event for zooming the file view
+        e.preventDefault();
+        e.stopPropagation();
+
+        accumulator += e.deltaY;
+        if (resetTimer) clearTimeout(resetTimer);
+        resetTimer = setTimeout(() => {
+          accumulator = 0;
+        }, 200);
+
+        const threshold = 30;
+        if (accumulator <= -threshold) {
+          onZoomIn?.();
+          accumulator = 0;
+        } else if (accumulator >= threshold) {
+          onZoomOut?.();
+          accumulator = 0;
+        }
       }
-    }
-  };
+      // When e.ctrlKey is false:
+      // DO NOT call e.preventDefault() or e.stopPropagation()!
+      // Native smooth scrolling scrolls the listContainer normally!
+    };
+
+    container.addEventListener("wheel", handleWheel, { passive: false });
+    return () => {
+      container.removeEventListener("wheel", handleWheel);
+      if (resetTimer) clearTimeout(resetTimer);
+    };
+  }, [onZoomIn, onZoomOut]);
 
   if (totalItemsCount === 0) {
     return (
@@ -155,7 +184,9 @@ export const FileList: React.FC<FileListProps> = ({
   }
 
   const isGrouped = prefs.groupMode !== "none" && processedGroups.length > 0;
-  const iconSize = Math.max(28, Math.min(84, Math.round(gridZoom * 0.44)));
+  const iconSize = Math.max(24, Math.min(128, Math.round(gridZoom * 0.48)));
+  const detailsRowHeight = Math.max(26, Math.min(44, Math.round(28 + (gridZoom - 96) * 0.08)));
+  const detailsIconSize = Math.max(14, Math.min(22, Math.round(16 + (gridZoom - 96) * 0.04)));
 
   const renderGridItem = (entry: FileEntry) => {
     const isSelected = selectedPaths.includes(entry.path);
@@ -217,6 +248,7 @@ export const FileList: React.FC<FileListProps> = ({
       <div
         key={entry.path}
         className={`${styles.row} ${isSelected ? styles.selected : ""}`}
+        style={{ height: `${detailsRowHeight}px` }}
         onClick={(e) => handleRowClick(e, entry)}
         onDoubleClick={() => onOpen(entry)}
         onContextMenu={(e) => {
@@ -226,7 +258,7 @@ export const FileList: React.FC<FileListProps> = ({
         }}
       >
         <div className={`${styles.cell} ${styles.colName}`}>
-          <FileIcon kind={entry.kind} ext={entry.ext} size={16} />
+          <FileIcon kind={entry.kind} ext={entry.ext} size={detailsIconSize} />
           {isRenaming ? (
             <input
               type="text"
@@ -280,7 +312,6 @@ export const FileList: React.FC<FileListProps> = ({
       ref={containerRef}
       tabIndex={0}
       onKeyDown={handleKeyDown}
-      onWheel={handleWheel}
       onContextMenu={(e) => onContextMenu(e)}
     >
       {/* Details View Header */}

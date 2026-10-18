@@ -106,6 +106,40 @@ export const App: React.FC = () => {
   const [isShortcutModalOpen, setIsShortcutModalOpen] = useState(false);
   const [gridZoom, setGridZoom] = useState(96);
 
+  const MIN_ZOOM = 48;
+  const MAX_ZOOM = 256;
+  const DEFAULT_ZOOM = 96;
+  const ZOOM_STEP = 16;
+
+  const handleZoomIn = useCallback(() => {
+    setGridZoom((z) => Math.min(MAX_ZOOM, z + ZOOM_STEP));
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setGridZoom((z) => Math.max(MIN_ZOOM, z - ZOOM_STEP));
+  }, []);
+
+  const handleZoomReset = useCallback(() => {
+    setGridZoom(DEFAULT_ZOOM);
+  }, []);
+
+  const handleZoomChange = useCallback((newZoom: number) => {
+    setGridZoom(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newZoom)));
+  }, []);
+
+  // Prevent browser/webview whole-window zoom when Ctrl is held
+  useEffect(() => {
+    const handleGlobalWheel = (e: WheelEvent) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener("wheel", handleGlobalWheel, { passive: false });
+    return () => {
+      window.removeEventListener("wheel", handleGlobalWheel);
+    };
+  }, []);
+
   // Load system info & settings on startup
   useEffect(() => {
     api.getSystemInfo().then((info) => {
@@ -539,13 +573,13 @@ export const App: React.FC = () => {
         setViewMode("grid");
       } else if (isTriggered("view.zoom_in")) {
         e.preventDefault();
-        setGridZoom((z) => Math.min(192, z + 16));
+        handleZoomIn();
       } else if (isTriggered("view.zoom_out")) {
         e.preventDefault();
-        setGridZoom((z) => Math.max(54, z - 16));
+        handleZoomOut();
       } else if (isTriggered("view.zoom_reset")) {
         e.preventDefault();
-        setGridZoom(96);
+        handleZoomReset();
       }
     };
 
@@ -757,6 +791,11 @@ export const App: React.FC = () => {
             prefs={viewPreferences}
             onPrefsChange={handlePrefsChange}
             onResetView={handleResetView}
+            zoom={gridZoom}
+            onZoomChange={handleZoomChange}
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            onZoomReset={handleZoomReset}
           />
 
           <FileList
@@ -781,8 +820,8 @@ export const App: React.FC = () => {
             showExtensions={settings.showFileExtensions}
             showHidden={settings.showHiddenFiles}
             gridZoom={gridZoom}
-            onZoomIn={() => setGridZoom((z) => Math.min(192, z + 16))}
-            onZoomOut={() => setGridZoom((z) => Math.max(54, z - 16))}
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
             onGoUp={navigateUp}
           />
 
