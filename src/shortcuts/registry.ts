@@ -94,6 +94,16 @@ export const SHORTCUT_REGISTRY: ShortcutDefinition[] = [
     preventInInput: false,
   },
   {
+    id: "nav.focus_search_f3",
+    category: "navigation",
+    keys: ["F3"],
+    displayKeys: "F3",
+    description: "Focus the search box",
+    explorerBehavior: "Explorer shortcut to activate search field",
+    finestFileSupport: "full",
+    preventInInput: false,
+  },
+  {
     id: "nav.refresh",
     category: "navigation",
     keys: ["F5"],
@@ -393,9 +403,19 @@ export const SHORTCUT_REGISTRY: ShortcutDefinition[] = [
     id: "view.details",
     category: "view",
     keys: ["Ctrl", "1"],
-    displayKeys: "Ctrl + 1 / Ctrl + Shift + 6",
+    displayKeys: "Ctrl + 1",
     description: "Switch to Details list view",
     explorerBehavior: "Switches current folder display to Details layout",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "view.details_shift",
+    category: "view",
+    keys: ["Ctrl", "Shift", "6"],
+    displayKeys: "Ctrl + Shift + 6",
+    description: "Switch to Details list view",
+    explorerBehavior: "Alternate Explorer shortcut for Details view",
     finestFileSupport: "full",
     preventInInput: true,
   },
@@ -403,9 +423,19 @@ export const SHORTCUT_REGISTRY: ShortcutDefinition[] = [
     id: "view.grid",
     category: "view",
     keys: ["Ctrl", "2"],
-    displayKeys: "Ctrl + 2 / Ctrl + Shift + 2",
+    displayKeys: "Ctrl + 2",
     description: "Switch to Grid / Large Icons view",
     explorerBehavior: "Switches current folder display to Grid layout",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "view.grid_shift",
+    category: "view",
+    keys: ["Ctrl", "Shift", "2"],
+    displayKeys: "Ctrl + Shift + 2",
+    description: "Switch to Grid / Large Icons view",
+    explorerBehavior: "Alternate Explorer shortcut for Large Icons view",
     finestFileSupport: "full",
     preventInInput: true,
   },
@@ -513,12 +543,133 @@ export function isInputFocused(target: EventTarget | null): boolean {
 }
 
 /**
- * Matches a native KeyboardEvent against a ShortcutDefinition.
+ * Maps internal key identifiers to clean Windows Explorer display labels.
  */
-export function matchesShortcut(event: KeyboardEvent, shortcut: ShortcutDefinition): boolean {
-  const reqCtrl = shortcut.keys.includes("Ctrl");
-  const reqShift = shortcut.keys.includes("Shift");
-  const reqAlt = shortcut.keys.includes("Alt");
+export function formatKeyDisplay(key: string): string {
+  switch (key) {
+    case "ArrowLeft":
+      return "Left Arrow";
+    case "ArrowRight":
+      return "Right Arrow";
+    case "ArrowUp":
+      return "Up Arrow";
+    case "ArrowDown":
+      return "Down Arrow";
+    case " ":
+    case "Space":
+      return "Space";
+    case "Escape":
+      return "Esc";
+    case "ContextMenu":
+      return "Menu Key";
+    case "Plus":
+      return "+";
+    case "Minus":
+      return "-";
+    default:
+      return key.length === 1 ? key.toUpperCase() : key;
+  }
+}
+
+/**
+ * Formats an array of keys (e.g. ["Ctrl", "Shift", "N"]) into a user-friendly string ("Ctrl + Shift + N").
+ */
+export function formatKeyComboDisplay(keys: string[]): string {
+  return keys.map(formatKeyDisplay).join(" + ");
+}
+
+/**
+ * Parses a saved shortcut string (e.g. "Ctrl+Shift+N" or "Alt+ArrowLeft") into key array.
+ */
+export function parseKeyCombo(comboStr: string): string[] {
+  if (!comboStr) return [];
+  const parts: string[] = [];
+  const rawParts = comboStr.split("+").map((s) => s.trim());
+  for (let i = 0; i < rawParts.length; i++) {
+    const part = rawParts[i];
+    if (part === "" && i > 0 && rawParts[i - 1] === "") {
+      parts.push("+");
+    } else if (part !== "") {
+      parts.push(part === "Plus" ? "+" : part);
+    }
+  }
+  return parts;
+}
+
+/**
+ * Converts a key combo array to a storage string.
+ */
+export function serializeKeyCombo(keys: string[]): string {
+  return keys.map((k) => (k === "+" ? "Plus" : k)).join("+");
+}
+
+/**
+ * Returns effective keys and display keys for a shortcut, taking into account user custom overrides.
+ */
+export function getEffectiveShortcut(
+  shortcut: ShortcutDefinition,
+  customShortcuts?: Record<string, string>
+): { keys: string[]; displayKeys: string; isCustom: boolean } {
+  if (customShortcuts && customShortcuts[shortcut.id]) {
+    const customStr = customShortcuts[shortcut.id];
+    const keys = parseKeyCombo(customStr);
+    if (keys.length > 0) {
+      return {
+        keys,
+        displayKeys: formatKeyComboDisplay(keys),
+        isCustom: true,
+      };
+    }
+  }
+  return {
+    keys: shortcut.keys,
+    displayKeys: shortcut.displayKeys,
+    isCustom: false,
+  };
+}
+
+/**
+ * Converts a KeyboardEvent during recording to a structured key combo, or null if only modifiers are held.
+ */
+export function eventToKeyCombo(e: KeyboardEvent | React.KeyboardEvent): { keys: string[]; displayKeys: string } | null {
+  const isModifierOnly = ["Control", "Shift", "Alt", "Meta"].includes(e.key);
+  if (isModifierOnly) {
+    return null;
+  }
+
+  const keys: string[] = [];
+  if (e.ctrlKey || e.metaKey) keys.push("Ctrl");
+  if (e.altKey) keys.push("Alt");
+  if (e.shiftKey) keys.push("Shift");
+
+  let mainKey = e.key;
+  if (mainKey === " ") mainKey = "Space";
+  else if (mainKey === "+" || mainKey === "=") mainKey = "+";
+  else if (mainKey === "-" || mainKey === "_") mainKey = "-";
+  else if (mainKey.length === 1) mainKey = mainKey.toUpperCase();
+
+  keys.push(mainKey);
+
+  return {
+    keys,
+    displayKeys: formatKeyComboDisplay(keys),
+  };
+}
+
+/**
+ * Matches a native KeyboardEvent against a ShortcutDefinition, respecting any custom user override.
+ */
+export function matchesShortcut(
+  event: KeyboardEvent,
+  shortcut: ShortcutDefinition,
+  customShortcuts?: Record<string, string>
+): boolean {
+  const effective = getEffectiveShortcut(shortcut, customShortcuts);
+  const keys = effective.keys;
+
+  const reqCtrl = keys.includes("Ctrl");
+  const reqShift = keys.includes("Shift");
+  const reqAlt = keys.includes("Alt");
 
   // Check modifiers
   const ctrlActive = event.ctrlKey || event.metaKey;
@@ -527,15 +678,35 @@ export function matchesShortcut(event: KeyboardEvent, shortcut: ShortcutDefiniti
   if (reqAlt !== event.altKey) return false;
 
   // Find non-modifier key
-  const mainKey = shortcut.keys.find((k) => !["Ctrl", "Shift", "Alt"].includes(k));
+  const mainKey = keys.find((k) => !["Ctrl", "Shift", "Alt"].includes(k));
   if (!mainKey) return false;
 
-  if (mainKey === "+" && (event.key === "+" || event.key === "=")) {
+  if ((mainKey === "+" || mainKey === "Plus") && (event.key === "+" || event.key === "=")) {
     return true;
   }
-  if (mainKey === "-" && (event.key === "-" || event.key === "_")) {
+  if ((mainKey === "-" || mainKey === "Minus") && (event.key === "-" || event.key === "_")) {
+    return true;
+  }
+  if (mainKey === "Space" && event.key === " ") {
+    return true;
+  }
+  if ((mainKey === "Menu" || mainKey === "ContextMenu") && event.key === "ContextMenu") {
     return true;
   }
 
   return event.key.toLowerCase() === mainKey.toLowerCase();
 }
+
+/**
+ * Checks if an event matches a shortcut ID directly, taking into account user custom overrides.
+ */
+export function matchesShortcutId(
+  event: KeyboardEvent,
+  shortcutId: string,
+  customShortcuts?: Record<string, string>
+): boolean {
+  const sc = SHORTCUT_REGISTRY.find((s) => s.id === shortcutId);
+  if (!sc) return false;
+  return matchesShortcut(event, sc, customShortcuts);
+}
+

@@ -172,5 +172,6 @@ export interface AppSettings {
   dualPaneEnabled: boolean;
   confirmDelete: boolean;
   viewPreferences: ViewPreferences;
+  customShortcuts?: Record<string, string>;
   index: IndexSettings;
 }

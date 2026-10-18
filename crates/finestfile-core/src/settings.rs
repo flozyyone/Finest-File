@@ -21,6 +21,7 @@ pub struct AppSettings {
     pub dual_pane_enabled: bool,
     pub confirm_delete: bool,
     pub view_preferences: ViewPreferences,
+    pub custom_shortcuts: std::collections::HashMap<String, String>,
     pub index: IndexSettings,
 }
 
@@ -37,6 +38,7 @@ impl Default for AppSettings {
             dual_pane_enabled: false,
             confirm_delete: true,
             view_preferences: ViewPreferences::default(),
+            custom_shortcuts: std::collections::HashMap::new(),
             index: IndexSettings::default(),
         }
     }

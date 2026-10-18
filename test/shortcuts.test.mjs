@@ -165,3 +165,23 @@ test("UndoStack - Pushes, pops, redos, and clear history correctly", () => {
   assert.equal(undoStack.canUndo(), true);
   assert.equal(undoStack.canRedo(), false);
 });
+
+test("Custom Shortcuts - Override detection and matchesShortcutId", () => {
+  const copySc = SHORTCUT_REGISTRY.find((s) => s.id === "ops.copy");
+  assert.ok(copySc);
+
+  // Default behavior
+  const defaultEvent = { key: "c", ctrlKey: true, metaKey: false, shiftKey: false, altKey: false };
+  assert.equal(matchesShortcut(defaultEvent, copySc), true);
+
+  // Custom override: rebind Ctrl+C to Ctrl+Shift+K
+  const customShortcuts = { "ops.copy": "Ctrl+Shift+K" };
+  // Old default no longer matches
+  assert.equal(matchesShortcut(defaultEvent, copySc, customShortcuts), false);
+
+  // New combo matches
+  const customEvent = { key: "k", ctrlKey: true, metaKey: false, shiftKey: true, altKey: false };
+  assert.equal(matchesShortcut(customEvent, copySc, customShortcuts), true);
+  assert.equal(matchesShortcut(customEvent, copySc), false); // Without overrides, doesn't match
+});
+

@@ -19,7 +19,7 @@ import { ContextMenu } from "./components/ContextMenu";
 import { JobsPanel } from "./components/JobsPanel";
 import { SettingsModal } from "./components/SettingsModal";
 import { ShortcutModal } from "./components/ShortcutModal";
-import { isInputFocused } from "./shortcuts/registry";
+import { isInputFocused, matchesShortcutId } from "./shortcuts/registry";
 import { undoStack } from "./utils/undoStack";
 import styles from "./App.module.css";
 
@@ -355,35 +355,43 @@ export const App: React.FC = () => {
   // Centralized keyboard navigation & shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const isTriggered = (shortcutId: string) =>
+        matchesShortcutId(e, shortcutId, settings.customShortcuts);
+
       const inInput = isInputFocused(e.target);
 
       // Handle shortcuts that work even while typing in an input
       if (inInput) {
-        if (e.key === "F1") {
+        if (isTriggered("help.shortcuts")) {
           e.preventDefault();
           setIsShortcutModalOpen(true);
-        } else if (e.key === "F5" || (e.ctrlKey && e.key.toLowerCase() === "r")) {
+        } else if (isTriggered("nav.refresh") || isTriggered("nav.refresh_ctrl_r")) {
           e.preventDefault();
           refreshCurrentDir();
-        } else if (e.altKey && e.key === "ArrowLeft") {
+        } else if (isTriggered("nav.back")) {
           e.preventDefault();
           navigateBack();
-        } else if (e.altKey && e.key === "ArrowRight") {
+        } else if (isTriggered("nav.forward")) {
           e.preventDefault();
           navigateForward();
-        } else if (e.altKey && e.key === "ArrowUp") {
+        } else if (isTriggered("nav.up")) {
           e.preventDefault();
           navigateUp();
-        } else if (e.altKey && e.key.toLowerCase() === "d") {
+        } else if (
+          isTriggered("nav.focus_address") ||
+          isTriggered("nav.focus_address_ctrl_l") ||
+          isTriggered("nav.focus_address_f4")
+        ) {
           e.preventDefault();
           setFocusAddressTrigger((n) => n + 1);
-        } else if (e.ctrlKey && e.key.toLowerCase() === "l") {
-          e.preventDefault();
-          setFocusAddressTrigger((n) => n + 1);
-        } else if (e.ctrlKey && (e.key.toLowerCase() === "e" || e.key.toLowerCase() === "f")) {
+        } else if (
+          isTriggered("nav.focus_search") ||
+          isTriggered("nav.focus_search_f") ||
+          isTriggered("nav.focus_search_f3")
+        ) {
           e.preventDefault();
           setFocusSearchTrigger((n) => n + 1);
-        } else if (e.key === "Escape") {
+        } else if (isTriggered("nav.escape")) {
           if (searchQuery) setSearchQuery("");
           (e.target as HTMLElement)?.blur();
         }
@@ -391,48 +399,44 @@ export const App: React.FC = () => {
       }
 
       // Help Modal
-      if (e.key === "F1") {
+      if (isTriggered("help.shortcuts")) {
         e.preventDefault();
         setIsShortcutModalOpen(true);
       }
       // Refresh
-      else if (e.key === "F5" || (e.ctrlKey && e.key.toLowerCase() === "r")) {
+      else if (isTriggered("nav.refresh") || isTriggered("nav.refresh_ctrl_r")) {
         e.preventDefault();
         refreshCurrentDir();
       }
       // Navigation
-      else if (e.altKey && e.key === "ArrowLeft") {
+      else if (isTriggered("nav.back")) {
         e.preventDefault();
         navigateBack();
-      } else if (e.altKey && e.key === "ArrowRight") {
+      } else if (isTriggered("nav.forward")) {
         e.preventDefault();
         navigateForward();
-      } else if (e.altKey && e.key === "ArrowUp") {
-        e.preventDefault();
-        navigateUp();
-      } else if (e.key === "Backspace") {
+      } else if (isTriggered("nav.up") || isTriggered("nav.backspace")) {
         e.preventDefault();
         navigateUp();
       }
       // Address & Search Bar Focus
-      else if (e.altKey && e.key.toLowerCase() === "d") {
+      else if (
+        isTriggered("nav.focus_address") ||
+        isTriggered("nav.focus_address_ctrl_l") ||
+        isTriggered("nav.focus_address_f4")
+      ) {
         e.preventDefault();
         setFocusAddressTrigger((n) => n + 1);
-      } else if (e.ctrlKey && e.key.toLowerCase() === "l") {
-        e.preventDefault();
-        setFocusAddressTrigger((n) => n + 1);
-      } else if (e.key === "F4") {
-        e.preventDefault();
-        setFocusAddressTrigger((n) => n + 1);
-      } else if (e.ctrlKey && (e.key.toLowerCase() === "e" || e.key.toLowerCase() === "f")) {
-        e.preventDefault();
-        setFocusSearchTrigger((n) => n + 1);
-      } else if (e.key === "F3") {
+      } else if (
+        isTriggered("nav.focus_search") ||
+        isTriggered("nav.focus_search_f") ||
+        isTriggered("nav.focus_search_f3")
+      ) {
         e.preventDefault();
         setFocusSearchTrigger((n) => n + 1);
       }
       // Escape
-      else if (e.key === "Escape") {
+      else if (isTriggered("nav.escape")) {
         setContextMenu(null);
         setIsShortcutModalOpen(false);
         setRenamingPath(null);
@@ -440,58 +444,64 @@ export const App: React.FC = () => {
         setSelectedPaths([]);
       }
       // Tabs
-      else if (e.ctrlKey && e.key.toLowerCase() === "t") {
+      else if (isTriggered("tabs.new")) {
         e.preventDefault();
         handleNewTab();
-      } else if (e.ctrlKey && e.key.toLowerCase() === "w") {
+      } else if (isTriggered("tabs.close")) {
         e.preventDefault();
         handleCloseTab(activeTabId);
-      } else if (e.ctrlKey && e.shiftKey && e.key === "Tab") {
+      } else if (isTriggered("tabs.prev")) {
         e.preventDefault();
         const curIdx = tabs.findIndex((t) => t.id === activeTabId);
         const prevIdx = (curIdx - 1 + tabs.length) % tabs.length;
         setActiveTabId(tabs[prevIdx].id);
-      } else if (e.ctrlKey && e.key === "Tab") {
+      } else if (isTriggered("tabs.next")) {
         e.preventDefault();
         const curIdx = tabs.findIndex((t) => t.id === activeTabId);
         const nextIdx = (curIdx + 1) % tabs.length;
         setActiveTabId(tabs[nextIdx].id);
       }
       // File Operations
-      else if (e.key === "F2" && selectedPaths.length === 1) {
+      else if (isTriggered("ops.rename") && selectedPaths.length === 1) {
         e.preventDefault();
         setRenamingPath(selectedPaths[0]);
-      } else if (e.key === "Delete") {
+      } else if (isTriggered("ops.delete_permanent")) {
         e.preventDefault();
-        handleDelete(e.shiftKey);
-      } else if (e.ctrlKey && e.key.toLowerCase() === "c" && !e.shiftKey) {
+        handleDelete(true);
+      } else if (isTriggered("ops.delete_recycle")) {
+        e.preventDefault();
+        handleDelete(false);
+      } else if (isTriggered("ops.copy")) {
         e.preventDefault();
         handleCopy();
-      } else if (e.ctrlKey && e.key.toLowerCase() === "x") {
+      } else if (isTriggered("ops.cut")) {
         e.preventDefault();
         handleCut();
-      } else if (e.ctrlKey && e.key.toLowerCase() === "v") {
+      } else if (isTriggered("ops.paste")) {
         e.preventDefault();
         handlePaste();
-      } else if (e.ctrlKey && e.key.toLowerCase() === "z") {
+      } else if (isTriggered("ops.undo")) {
         e.preventDefault();
         handleUndo();
-      } else if (e.ctrlKey && e.key.toLowerCase() === "y") {
+      } else if (isTriggered("ops.redo")) {
         e.preventDefault();
         handleRedo();
-      } else if (e.ctrlKey && e.key.toLowerCase() === "a") {
+      } else if (isTriggered("ops.select_all")) {
         e.preventDefault();
         handleSelectAll();
-      } else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "c") {
+      } else if (isTriggered("ops.copy_path")) {
         e.preventDefault();
         handleCopyPath();
-      } else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "n") {
+      } else if (isTriggered("ops.new_folder")) {
         e.preventDefault();
         handleNewFolder();
-      } else if (e.altKey && e.key === "Enter" && selectedPaths.length > 0) {
+      } else if (isTriggered("ops.properties") && selectedPaths.length > 0) {
         e.preventDefault();
         api.showItemProperties(selectedPaths[0]);
-      } else if ((e.shiftKey && e.key === "F10") || e.key === "ContextMenu") {
+      } else if (
+        isTriggered("ops.context_menu_f10") ||
+        isTriggered("ops.context_menu_key")
+      ) {
         e.preventDefault();
         setContextMenu({
           x: window.innerWidth / 2,
@@ -503,24 +513,24 @@ export const App: React.FC = () => {
       }
       // View Switching & Zooming
       else if (
-        (e.ctrlKey && e.key === "1") ||
-        (e.ctrlKey && e.shiftKey && e.key === "6")
+        isTriggered("view.details") ||
+        isTriggered("view.details_shift")
       ) {
         e.preventDefault();
         setViewMode("details");
       } else if (
-        (e.ctrlKey && e.key === "2") ||
-        (e.ctrlKey && e.shiftKey && e.key === "2")
+        isTriggered("view.grid") ||
+        isTriggered("view.grid_shift")
       ) {
         e.preventDefault();
         setViewMode("grid");
-      } else if (e.ctrlKey && (e.key === "+" || e.key === "=")) {
+      } else if (isTriggered("view.zoom_in")) {
         e.preventDefault();
         setGridZoom((z) => Math.min(192, z + 16));
-      } else if (e.ctrlKey && (e.key === "-" || e.key === "_")) {
+      } else if (isTriggered("view.zoom_out")) {
         e.preventDefault();
         setGridZoom((z) => Math.max(54, z - 16));
-      } else if (e.ctrlKey && e.key === "0") {
+      } else if (isTriggered("view.zoom_reset")) {
         e.preventDefault();
         setGridZoom(96);
       }
@@ -538,6 +548,7 @@ export const App: React.FC = () => {
     searchQuery,
     tabs,
     activeTabId,
+    settings.customShortcuts,
   ]);
 
   const handleSelect = (entry: FileEntry, multi: boolean, range: boolean) => {
@@ -866,6 +877,15 @@ export const App: React.FC = () => {
       <ShortcutModal
         isOpen={isShortcutModalOpen}
         onClose={() => setIsShortcutModalOpen(false)}
+        customShortcuts={settings.customShortcuts}
+        onSaveCustomShortcuts={(updatedCustomShortcuts) => {
+          const newSettings: AppSettings = {
+            ...settings,
+            customShortcuts: updatedCustomShortcuts,
+          };
+          setSettings(newSettings);
+          api.updateSettings(newSettings);
+        }}
       />
     </div>
   );
