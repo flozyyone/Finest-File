@@ -11,6 +11,7 @@ import {
   Settings,
   Activity,
   Layers,
+  Keyboard,
 } from "lucide-react";
 import { DriveInfo, KnownFolder } from "../types";
 import { formatBytes } from "../utils/format";
@@ -23,6 +24,7 @@ interface SidebarProps {
   knownFolders: KnownFolder[];
   onOpenSettings: () => void;
   onOpenJobs: () => void;
+  onOpenShortcuts?: () => void;
   activeJobCount: number;
 }
 
@@ -33,6 +35,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   knownFolders,
   onOpenSettings,
   onOpenJobs,
+  onOpenShortcuts,
   activeJobCount,
 }) => {
   const getKnownIcon = (id: string) => {
@@ -129,6 +132,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span className={styles.badge}>{activeJobCount}</span>
           )}
         </button>
+        {onOpenShortcuts && (
+          <button className={styles.footerBtn} onClick={onOpenShortcuts} title="Keyboard Shortcuts (F1)">
+            <Keyboard size={16} />
+            <span>Shortcuts</span>
+          </button>
+        )}
         <button className={styles.footerBtn} onClick={onOpenSettings} title="Settings">
           <Settings size={16} />
           <span>Settings</span>

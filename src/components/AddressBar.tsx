@@ -23,6 +23,8 @@ interface AddressBarProps {
   onSearchChange: (query: string) => void;
   onClearSearch: () => void;
   isSearching: boolean;
+  focusAddressTrigger?: number;
+  focusSearchTrigger?: number;
 }
 
 export const AddressBar: React.FC<AddressBarProps> = ({
@@ -38,13 +40,29 @@ export const AddressBar: React.FC<AddressBarProps> = ({
   onSearchChange,
   onClearSearch,
   isSearching,
+  focusAddressTrigger,
+  focusSearchTrigger,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(currentPath);
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setEditText(currentPath);
   }, [currentPath]);
+
+  useEffect(() => {
+    if (focusAddressTrigger) {
+      setIsEditing(true);
+    }
+  }, [focusAddressTrigger]);
+
+  useEffect(() => {
+    if (focusSearchTrigger && searchInputRef.current) {
+      searchInputRef.current.focus();
+      searchInputRef.current.select();
+    }
+  }, [focusSearchTrigger]);
 
   // Split path for breadcrumbs
   const getBreadcrumbs = () => {
@@ -156,6 +174,7 @@ export const AddressBar: React.FC<AddressBarProps> = ({
       <div className={styles.searchBox}>
         <Search size={15} className={styles.searchIcon} />
         <input
+          ref={searchInputRef}
           type="text"
           className={styles.searchInput}
           placeholder="Search folder (Ctrl+F, F3)"

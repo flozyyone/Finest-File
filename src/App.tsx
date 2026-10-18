@@ -18,6 +18,9 @@ import { FileList } from "./components/FileList";
 import { ContextMenu } from "./components/ContextMenu";
 import { JobsPanel } from "./components/JobsPanel";
 import { SettingsModal } from "./components/SettingsModal";
+import { ShortcutModal } from "./components/ShortcutModal";
+import { isInputFocused } from "./shortcuts/registry";
+import { undoStack } from "./utils/undoStack";
 import styles from "./App.module.css";
 
 const defaultViewPreferences: ViewPreferences = {
@@ -89,6 +92,12 @@ export const App: React.FC = () => {
     y: number;
     selected: FileEntry[];
   } | null>(null);
+
+  // Shortcut & Focus triggers
+  const [focusAddressTrigger, setFocusAddressTrigger] = useState(0);
+  const [focusSearchTrigger, setFocusSearchTrigger] = useState(0);
+  const [isShortcutModalOpen, setIsShortcutModalOpen] = useState(false);
+  const [gridZoom, setGridZoom] = useState(96);
 
   // Load system info & settings on startup
   useEffect(() => {
@@ -295,15 +304,86 @@ export const App: React.FC = () => {
     loadDirectory(activeTab.path);
   };
 
-  // Keyboard navigation shortcuts
+  const handleUndo = () => {
+    const action = undoStack.popUndo();
+    if (!action) return;
+    if (action.type === "rename" && action.payload.newPath) {
+      const originalName = action.payload.originalPath.split(/[/\\]+/).pop() || "";
+      api.renameItem(action.payload.newPath, originalName).then(() => refreshCurrentDir());
+    } else if (action.type === "create") {
+      api.trashItems([action.payload.originalPath]).then(() => refreshCurrentDir());
+    }
+  };
+
+  const handleRedo = () => {
+    const action = undoStack.popRedo();
+    if (!action) return;
+    if (action.type === "rename" && action.payload.newPath) {
+      const newName = action.payload.newPath.split(/[/\\]+/).pop() || "";
+      api.renameItem(action.payload.originalPath, newName).then(() => refreshCurrentDir());
+    }
+  };
+
+  const handleSelectAll = () => {
+    setSelectedPaths(entries.map((e) => e.path));
+  };
+
+  const handleCopyPath = () => {
+    if (selectedPaths.length > 0) {
+      navigator.clipboard.writeText(selectedPaths.join("\n"));
+    }
+  };
+
+  // Centralized keyboard navigation & shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement) return;
+      const inInput = isInputFocused(e.target);
 
-      if (e.key === "F5" || (e.ctrlKey && e.key.toLowerCase() === "r")) {
+      // Handle shortcuts that work even while typing in an input
+      if (inInput) {
+        if (e.key === "F1") {
+          e.preventDefault();
+          setIsShortcutModalOpen(true);
+        } else if (e.key === "F5" || (e.ctrlKey && e.key.toLowerCase() === "r")) {
+          e.preventDefault();
+          refreshCurrentDir();
+        } else if (e.altKey && e.key === "ArrowLeft") {
+          e.preventDefault();
+          navigateBack();
+        } else if (e.altKey && e.key === "ArrowRight") {
+          e.preventDefault();
+          navigateForward();
+        } else if (e.altKey && e.key === "ArrowUp") {
+          e.preventDefault();
+          navigateUp();
+        } else if (e.altKey && e.key.toLowerCase() === "d") {
+          e.preventDefault();
+          setFocusAddressTrigger((n) => n + 1);
+        } else if (e.ctrlKey && e.key.toLowerCase() === "l") {
+          e.preventDefault();
+          setFocusAddressTrigger((n) => n + 1);
+        } else if (e.ctrlKey && (e.key.toLowerCase() === "e" || e.key.toLowerCase() === "f")) {
+          e.preventDefault();
+          setFocusSearchTrigger((n) => n + 1);
+        } else if (e.key === "Escape") {
+          if (searchQuery) setSearchQuery("");
+          (e.target as HTMLElement)?.blur();
+        }
+        return; // Don't intercept normal typing, Ctrl+C, Ctrl+V, etc. inside text inputs
+      }
+
+      // Help Modal
+      if (e.key === "F1") {
+        e.preventDefault();
+        setIsShortcutModalOpen(true);
+      }
+      // Refresh
+      else if (e.key === "F5" || (e.ctrlKey && e.key.toLowerCase() === "r")) {
         e.preventDefault();
         refreshCurrentDir();
-      } else if (e.altKey && e.key === "ArrowLeft") {
+      }
+      // Navigation
+      else if (e.altKey && e.key === "ArrowLeft") {
         e.preventDefault();
         navigateBack();
       } else if (e.altKey && e.key === "ArrowRight") {
@@ -312,19 +392,61 @@ export const App: React.FC = () => {
       } else if (e.altKey && e.key === "ArrowUp") {
         e.preventDefault();
         navigateUp();
-      } else if (e.ctrlKey && e.key.toLowerCase() === "t") {
+      } else if (e.key === "Backspace") {
+        e.preventDefault();
+        navigateUp();
+      }
+      // Address & Search Bar Focus
+      else if (e.altKey && e.key.toLowerCase() === "d") {
+        e.preventDefault();
+        setFocusAddressTrigger((n) => n + 1);
+      } else if (e.ctrlKey && e.key.toLowerCase() === "l") {
+        e.preventDefault();
+        setFocusAddressTrigger((n) => n + 1);
+      } else if (e.key === "F4") {
+        e.preventDefault();
+        setFocusAddressTrigger((n) => n + 1);
+      } else if (e.ctrlKey && (e.key.toLowerCase() === "e" || e.key.toLowerCase() === "f")) {
+        e.preventDefault();
+        setFocusSearchTrigger((n) => n + 1);
+      } else if (e.key === "F3") {
+        e.preventDefault();
+        setFocusSearchTrigger((n) => n + 1);
+      }
+      // Escape
+      else if (e.key === "Escape") {
+        setContextMenu(null);
+        setIsShortcutModalOpen(false);
+        setRenamingPath(null);
+        if (searchQuery) setSearchQuery("");
+        setSelectedPaths([]);
+      }
+      // Tabs
+      else if (e.ctrlKey && e.key.toLowerCase() === "t") {
         e.preventDefault();
         handleNewTab();
       } else if (e.ctrlKey && e.key.toLowerCase() === "w") {
         e.preventDefault();
         handleCloseTab(activeTabId);
-      } else if (e.key === "F2" && selectedPaths.length === 1) {
+      } else if (e.ctrlKey && e.shiftKey && e.key === "Tab") {
+        e.preventDefault();
+        const curIdx = tabs.findIndex((t) => t.id === activeTabId);
+        const prevIdx = (curIdx - 1 + tabs.length) % tabs.length;
+        setActiveTabId(tabs[prevIdx].id);
+      } else if (e.ctrlKey && e.key === "Tab") {
+        e.preventDefault();
+        const curIdx = tabs.findIndex((t) => t.id === activeTabId);
+        const nextIdx = (curIdx + 1) % tabs.length;
+        setActiveTabId(tabs[nextIdx].id);
+      }
+      // File Operations
+      else if (e.key === "F2" && selectedPaths.length === 1) {
         e.preventDefault();
         setRenamingPath(selectedPaths[0]);
       } else if (e.key === "Delete") {
         e.preventDefault();
         handleDelete(e.shiftKey);
-      } else if (e.ctrlKey && e.key.toLowerCase() === "c") {
+      } else if (e.ctrlKey && e.key.toLowerCase() === "c" && !e.shiftKey) {
         e.preventDefault();
         handleCopy();
       } else if (e.ctrlKey && e.key.toLowerCase() === "x") {
@@ -333,12 +455,56 @@ export const App: React.FC = () => {
       } else if (e.ctrlKey && e.key.toLowerCase() === "v") {
         e.preventDefault();
         handlePaste();
+      } else if (e.ctrlKey && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        handleUndo();
+      } else if (e.ctrlKey && e.key.toLowerCase() === "y") {
+        e.preventDefault();
+        handleRedo();
+      } else if (e.ctrlKey && e.key.toLowerCase() === "a") {
+        e.preventDefault();
+        handleSelectAll();
+      } else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "c") {
+        e.preventDefault();
+        handleCopyPath();
       } else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "n") {
         e.preventDefault();
         handleNewFolder();
       } else if (e.altKey && e.key === "Enter" && selectedPaths.length > 0) {
         e.preventDefault();
         api.showItemProperties(selectedPaths[0]);
+      } else if ((e.shiftKey && e.key === "F10") || e.key === "ContextMenu") {
+        e.preventDefault();
+        setContextMenu({
+          x: window.innerWidth / 2,
+          y: window.innerHeight / 2,
+          selected: selectedPaths
+            .map((p) => entries.find((en) => en.path === p))
+            .filter(Boolean) as FileEntry[],
+        });
+      }
+      // View Switching & Zooming
+      else if (
+        (e.ctrlKey && e.key === "1") ||
+        (e.ctrlKey && e.shiftKey && e.key === "6")
+      ) {
+        e.preventDefault();
+        setViewMode("details");
+      } else if (
+        (e.ctrlKey && e.key === "2") ||
+        (e.ctrlKey && e.shiftKey && e.key === "2")
+      ) {
+        e.preventDefault();
+        setViewMode("grid");
+      } else if (e.ctrlKey && (e.key === "+" || e.key === "=")) {
+        e.preventDefault();
+        setGridZoom((z) => Math.min(192, z + 16));
+      } else if (e.ctrlKey && (e.key === "-" || e.key === "_")) {
+        e.preventDefault();
+        setGridZoom((z) => Math.max(54, z - 16));
+      } else if (e.ctrlKey && e.key === "0") {
+        e.preventDefault();
+        setGridZoom(96);
       }
     };
 
@@ -350,6 +516,10 @@ export const App: React.FC = () => {
     activeTab.history,
     selectedPaths,
     clipboard,
+    entries,
+    searchQuery,
+    tabs,
+    activeTabId,
   ]);
 
   const handleSelect = (entry: FileEntry, multi: boolean, range: boolean) => {
@@ -433,6 +603,11 @@ export const App: React.FC = () => {
 
   const handleNewFolder = () => {
     api.createFolder(activeTab.path).then((created) => {
+      undoStack.push({
+        type: "create",
+        description: `Create folder ${created}`,
+        payload: { originalPath: created, isDir: true },
+      });
       refreshCurrentDir();
       setRenamingPath(created);
     });
@@ -440,6 +615,11 @@ export const App: React.FC = () => {
 
   const handleNewFile = () => {
     api.createFile(activeTab.path, "New text document.txt").then((created) => {
+      undoStack.push({
+        type: "create",
+        description: `Create file ${created}`,
+        payload: { originalPath: created, isDir: false },
+      });
       refreshCurrentDir();
       setRenamingPath(created);
     });
@@ -447,7 +627,13 @@ export const App: React.FC = () => {
 
   const handleRenameSubmit = (newName: string) => {
     if (renamingPath && newName.trim()) {
-      api.renameItem(renamingPath, newName.trim()).then(() => {
+      const oldPath = renamingPath;
+      api.renameItem(oldPath, newName.trim()).then((newPath) => {
+        undoStack.push({
+          type: "rename",
+          description: `Rename to ${newName.trim()}`,
+          payload: { originalPath: oldPath, newPath: newPath || oldPath },
+        });
         setRenamingPath(null);
         refreshCurrentDir();
       });
@@ -481,6 +667,8 @@ export const App: React.FC = () => {
         onSearchChange={setSearchQuery}
         onClearSearch={() => setSearchQuery("")}
         isSearching={!!searchQuery}
+        focusAddressTrigger={focusAddressTrigger}
+        focusSearchTrigger={focusSearchTrigger}
       />
 
       <div className={styles.mainLayout}>
@@ -491,6 +679,7 @@ export const App: React.FC = () => {
           knownFolders={systemInfo.knownFolders}
           onOpenSettings={() => setIsSettingsOpen(true)}
           onOpenJobs={() => setIsJobsOpen(true)}
+          onOpenShortcuts={() => setIsShortcutModalOpen(true)}
           activeJobCount={activeJobCount}
         />
 
@@ -529,6 +718,10 @@ export const App: React.FC = () => {
             onRenameCancel={() => setRenamingPath(null)}
             showExtensions={settings.showFileExtensions}
             showHidden={settings.showHiddenFiles}
+            gridZoom={gridZoom}
+            onZoomIn={() => setGridZoom((z) => Math.min(192, z + 16))}
+            onZoomOut={() => setGridZoom((z) => Math.max(54, z - 16))}
+            onGoUp={navigateUp}
           />
 
           <div className={styles.statusBar}>
@@ -645,6 +838,11 @@ export const App: React.FC = () => {
             api.getIndexStatus().then(setIndexStatus);
           });
         }}
+      />
+
+      <ShortcutModal
+        isOpen={isShortcutModalOpen}
+        onClose={() => setIsShortcutModalOpen(false)}
       />
     </div>
   );

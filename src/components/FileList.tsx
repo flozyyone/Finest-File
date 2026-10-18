@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { FileEntry, FileGroup, SortField, ViewPreferences } from "../types";
 import { FileIcon } from "./FileIcon";
 import { formatBytes, formatDate } from "../utils/format";
@@ -19,6 +19,10 @@ interface FileListProps {
   onRenameCancel: () => void;
   showExtensions: boolean;
   showHidden: boolean;
+  gridZoom?: number;
+  onZoomIn?: () => void;
+  onZoomOut?: () => void;
+  onGoUp?: () => void;
 }
 
 export const FileList: React.FC<FileListProps> = ({
@@ -35,8 +39,13 @@ export const FileList: React.FC<FileListProps> = ({
   onRenameCancel,
   showExtensions,
   showHidden,
+  gridZoom = 96,
+  onZoomIn,
+  onZoomOut,
+  onGoUp,
 }) => {
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const toggleGroup = (key: string) => {
     setCollapsedGroups((prev) => ({
@@ -59,15 +68,73 @@ export const FileList: React.FC<FileListProps> = ({
   };
 
   // Filter hidden files per group
-  const processedGroups = groups.map((g) => ({
-    ...g,
-    items: g.items.filter((e) => {
-      if (!showHidden && (e.hidden || e.system)) return false;
-      return true;
-    }),
-  })).filter((g) => g.items.length > 0);
+  const processedGroups = groups
+    .map((g) => ({
+      ...g,
+      items: g.items.filter((e) => {
+        if (!showHidden && (e.hidden || e.system)) return false;
+        return true;
+      }),
+    }))
+    .filter((g) => g.items.length > 0);
 
   const totalItemsCount = processedGroups.reduce((acc, g) => acc + g.items.length, 0);
+  const allVisibleItems = processedGroups.flatMap((g) => g.items);
+
+  // List keyboard navigation
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (renamingPath) return; // Don't intercept while user is renaming
+    if (allVisibleItems.length === 0) return;
+
+    const selectedIndex = allVisibleItems.findIndex((item) =>
+      selectedPaths.includes(item.path)
+    );
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      const nextIdx = Math.min(allVisibleItems.length - 1, selectedIndex + 1);
+      onSelect(allVisibleItems[nextIdx], false, e.shiftKey);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      const prevIdx = Math.max(0, selectedIndex <= 0 ? 0 : selectedIndex - 1);
+      onSelect(allVisibleItems[prevIdx], false, e.shiftKey);
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      onSelect(allVisibleItems[0], false, e.shiftKey);
+    } else if (e.key === "End") {
+      e.preventDefault();
+      onSelect(allVisibleItems[allVisibleItems.length - 1], false, e.shiftKey);
+    } else if (e.key === "PageDown") {
+      e.preventDefault();
+      const targetIdx = Math.min(allVisibleItems.length - 1, selectedIndex + 8);
+      onSelect(allVisibleItems[targetIdx], false, e.shiftKey);
+    } else if (e.key === "PageUp") {
+      e.preventDefault();
+      const targetIdx = Math.max(0, selectedIndex - 8);
+      onSelect(allVisibleItems[targetIdx], false, e.shiftKey);
+    } else if (e.key === "Enter") {
+      if (selectedIndex >= 0) {
+        e.preventDefault();
+        onOpen(allVisibleItems[selectedIndex]);
+      }
+    } else if (e.key === "Backspace") {
+      if (onGoUp) {
+        e.preventDefault();
+        onGoUp();
+      }
+    }
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+    if (e.ctrlKey) {
+      e.preventDefault();
+      if (e.deltaY < 0 && onZoomIn) {
+        onZoomIn();
+      } else if (e.deltaY > 0 && onZoomOut) {
+        onZoomOut();
+      }
+    }
+  };
 
   if (totalItemsCount === 0) {
     return (
@@ -81,6 +148,7 @@ export const FileList: React.FC<FileListProps> = ({
   }
 
   const isGrouped = prefs.groupMode !== "none" && processedGroups.length > 0;
+  const iconSize = Math.max(28, Math.min(84, Math.round(gridZoom * 0.44)));
 
   const renderGridItem = (entry: FileEntry) => {
     const isSelected = selectedPaths.includes(entry.path);
@@ -100,7 +168,7 @@ export const FileList: React.FC<FileListProps> = ({
         title={entry.name}
       >
         <div className={styles.gridIcon}>
-          <FileIcon kind={entry.kind} ext={entry.ext} size={42} />
+          <FileIcon kind={entry.kind} ext={entry.ext} size={iconSize} />
         </div>
 
         {isRenaming ? (
@@ -200,7 +268,11 @@ export const FileList: React.FC<FileListProps> = ({
 
   return (
     <div
+      ref={containerRef}
       className={styles.listContainer}
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+      onWheel={handleWheel}
       onContextMenu={(e) => onContextMenu(e)}
       onClick={() => onSelect({} as FileEntry, false, false)}
     >
@@ -297,7 +369,13 @@ export const FileList: React.FC<FileListProps> = ({
               {!isCollapsed && (
                 <>
                   {viewMode === "grid" ? (
-                    <div className={styles.gridSubContainer}>
+                    <div
+                      className={styles.gridSubContainer}
+                      style={{
+                        gridTemplateColumns: `repeat(auto-fill, minmax(${gridZoom}px, 1fr))`,
+                        gridAutoRows: `${gridZoom}px`,
+                      }}
+                    >
                       {group.items.map((entry) => renderGridItem(entry))}
                     </div>
                   ) : (

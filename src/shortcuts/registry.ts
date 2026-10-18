@@ -1,0 +1,541 @@
+import type { ShortcutDefinition } from "./types";
+
+export const SHORTCUT_REGISTRY: ShortcutDefinition[] = [
+  // --- Navigation & Windows ---
+  {
+    id: "nav.back",
+    category: "navigation",
+    keys: ["Alt", "ArrowLeft"],
+    displayKeys: "Alt + Left Arrow",
+    description: "Navigate back in folder history",
+    explorerBehavior: "Navigates to the previous location in history",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "nav.forward",
+    category: "navigation",
+    keys: ["Alt", "ArrowRight"],
+    displayKeys: "Alt + Right Arrow",
+    description: "Navigate forward in folder history",
+    explorerBehavior: "Navigates to the next location in history",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "nav.up",
+    category: "navigation",
+    keys: ["Alt", "ArrowUp"],
+    displayKeys: "Alt + Up Arrow",
+    description: "Navigate to the parent folder",
+    explorerBehavior: "Opens the parent directory containing the current folder",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "nav.backspace",
+    category: "navigation",
+    keys: ["Backspace"],
+    displayKeys: "Backspace",
+    description: "Go to parent folder / previous folder",
+    explorerBehavior: "Opens the parent directory in legacy Explorer, or goes back",
+    finestFileSupport: "full",
+    differences: "Navigates to parent folder when list is focused",
+    preventInInput: true,
+  },
+  {
+    id: "nav.focus_address",
+    category: "navigation",
+    keys: ["Alt", "d"],
+    displayKeys: "Alt + D",
+    description: "Focus and select the address bar",
+    explorerBehavior: "Selects the text in the address bar for typing a path",
+    finestFileSupport: "full",
+    preventInInput: false,
+  },
+  {
+    id: "nav.focus_address_ctrl_l",
+    category: "navigation",
+    keys: ["Ctrl", "l"],
+    displayKeys: "Ctrl + L",
+    description: "Focus and select the address bar",
+    explorerBehavior: "Alternate standard shortcut to focus address bar",
+    finestFileSupport: "full",
+    preventInInput: false,
+  },
+  {
+    id: "nav.focus_address_f4",
+    category: "navigation",
+    keys: ["F4"],
+    displayKeys: "F4",
+    description: "Focus the address bar",
+    explorerBehavior: "Opens the address bar history dropdown list",
+    finestFileSupport: "full",
+    preventInInput: false,
+  },
+  {
+    id: "nav.focus_search",
+    category: "navigation",
+    keys: ["Ctrl", "e"],
+    displayKeys: "Ctrl + E",
+    description: "Focus the search box",
+    explorerBehavior: "Focuses the search field in the top-right",
+    finestFileSupport: "full",
+    preventInInput: false,
+  },
+  {
+    id: "nav.focus_search_f",
+    category: "navigation",
+    keys: ["Ctrl", "f"],
+    displayKeys: "Ctrl + F",
+    description: "Focus the search box",
+    explorerBehavior: "Alternate standard shortcut to focus search field",
+    finestFileSupport: "full",
+    preventInInput: false,
+  },
+  {
+    id: "nav.refresh",
+    category: "navigation",
+    keys: ["F5"],
+    displayKeys: "F5",
+    description: "Refresh the current folder listing",
+    explorerBehavior: "Re-reads the directory contents from the filesystem",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "nav.refresh_ctrl_r",
+    category: "navigation",
+    keys: ["Ctrl", "r"],
+    displayKeys: "Ctrl + R",
+    description: "Refresh the current folder listing",
+    explorerBehavior: "Web-browser and modern Explorer compatibility refresh",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "nav.properties",
+    category: "navigation",
+    keys: ["Alt", "Enter"],
+    displayKeys: "Alt + Enter",
+    description: "Open properties for selected item(s)",
+    explorerBehavior: "Displays native Windows file/folder Properties dialog",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "nav.escape",
+    category: "navigation",
+    keys: ["Escape"],
+    displayKeys: "Esc",
+    description: "Cancel operation, close menu, or clear search",
+    explorerBehavior: "Dismisses dialogs, menus, or active selections",
+    finestFileSupport: "full",
+    preventInInput: false,
+  },
+
+  // --- File & Folder Operations ---
+  {
+    id: "ops.copy",
+    category: "operations",
+    keys: ["Ctrl", "c"],
+    displayKeys: "Ctrl + C",
+    description: "Copy selected items to clipboard",
+    explorerBehavior: "Copies paths to clipboard for pasting into Explorer or other apps",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "ops.cut",
+    category: "operations",
+    keys: ["Ctrl", "x"],
+    displayKeys: "Ctrl + X",
+    description: "Cut selected items for moving",
+    explorerBehavior: "Marks items for moving on subsequent paste",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "ops.paste",
+    category: "operations",
+    keys: ["Ctrl", "v"],
+    displayKeys: "Ctrl + V",
+    description: "Paste files/folders into current folder",
+    explorerBehavior: "Transfers copied/cut files with conflict resolution",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "ops.undo",
+    category: "operations",
+    keys: ["Ctrl", "z"],
+    displayKeys: "Ctrl + Z",
+    description: "Undo last file operation (rename, move, trash)",
+    explorerBehavior: "Reverses the previous file system operation",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "ops.redo",
+    category: "operations",
+    keys: ["Ctrl", "y"],
+    displayKeys: "Ctrl + Y",
+    description: "Redo last undone file operation",
+    explorerBehavior: "Re-applies the operation that was just undone",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "ops.rename",
+    category: "operations",
+    keys: ["F2"],
+    displayKeys: "F2",
+    description: "Rename selected item inline",
+    explorerBehavior: "Highlights file base name (excluding extension) for editing",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "ops.delete_recycle",
+    category: "operations",
+    keys: ["Delete"],
+    displayKeys: "Delete",
+    description: "Move selected items to Recycle Bin",
+    explorerBehavior: "Safely sends items to Windows Recycle Bin",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "ops.delete_permanent",
+    category: "operations",
+    keys: ["Shift", "Delete"],
+    displayKeys: "Shift + Delete",
+    description: "Permanently delete selected items",
+    explorerBehavior: "Bypasses Recycle Bin and prompts for confirmation",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "ops.new_folder",
+    category: "operations",
+    keys: ["Ctrl", "Shift", "N"],
+    displayKeys: "Ctrl + Shift + N",
+    description: "Create a new folder",
+    explorerBehavior: "Creates 'New folder' and starts inline renaming",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "ops.select_all",
+    category: "operations",
+    keys: ["Ctrl", "a"],
+    displayKeys: "Ctrl + A",
+    description: "Select all items in folder",
+    explorerBehavior: "Selects every visible file and folder in the list",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "ops.copy_path",
+    category: "operations",
+    keys: ["Ctrl", "Shift", "C"],
+    displayKeys: "Ctrl + Shift + C",
+    description: "Copy selected file's full path to clipboard",
+    explorerBehavior: "Copies the absolute filesystem path(s) to clipboard as text",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "ops.context_menu_f10",
+    category: "operations",
+    keys: ["Shift", "F10"],
+    displayKeys: "Shift + F10",
+    description: "Open context menu for selected item",
+    explorerBehavior: "Opens context menu at the focused item position",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "ops.context_menu_key",
+    category: "operations",
+    keys: ["ContextMenu"],
+    displayKeys: "Menu Key",
+    description: "Open context menu for selected item",
+    explorerBehavior: "Opens context menu at the focused item position",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+
+  // --- Selection & Navigation ---
+  {
+    id: "select.open",
+    category: "selection",
+    keys: ["Enter"],
+    displayKeys: "Enter",
+    description: "Open selected folder or file",
+    explorerBehavior: "Navigates into folder or executes default handler for file",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "select.up",
+    category: "selection",
+    keys: ["ArrowUp"],
+    displayKeys: "Up Arrow",
+    description: "Select item above",
+    explorerBehavior: "Moves selection to previous item in the view",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "select.down",
+    category: "selection",
+    keys: ["ArrowDown"],
+    displayKeys: "Down Arrow",
+    description: "Select item below",
+    explorerBehavior: "Moves selection to next item in the view",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "select.left",
+    category: "selection",
+    keys: ["ArrowLeft"],
+    displayKeys: "Left Arrow",
+    description: "Select item to the left (Grid view)",
+    explorerBehavior: "Moves selection to the preceding column in grid mode",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "select.right",
+    category: "selection",
+    keys: ["ArrowRight"],
+    displayKeys: "Right Arrow",
+    description: "Select item to the right (Grid view)",
+    explorerBehavior: "Moves selection to the succeeding column in grid mode",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "select.range_up",
+    category: "selection",
+    keys: ["Shift", "ArrowUp"],
+    displayKeys: "Shift + Up Arrow",
+    description: "Extend selection upwards",
+    explorerBehavior: "Extends contiguous selection range up by one item",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "select.range_down",
+    category: "selection",
+    keys: ["Shift", "ArrowDown"],
+    displayKeys: "Shift + Down Arrow",
+    description: "Extend selection downwards",
+    explorerBehavior: "Extends contiguous selection range down by one item",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "select.home",
+    category: "selection",
+    keys: ["Home"],
+    displayKeys: "Home",
+    description: "Select the first item in the folder",
+    explorerBehavior: "Moves selection and view to the very top item",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "select.end",
+    category: "selection",
+    keys: ["End"],
+    displayKeys: "End",
+    description: "Select the last item in the folder",
+    explorerBehavior: "Moves selection and view to the very bottom item",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "select.pageup",
+    category: "selection",
+    keys: ["PageUp"],
+    displayKeys: "Page Up",
+    description: "Move view and selection one page up",
+    explorerBehavior: "Scrolls and selects one screenful upwards",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "select.pagedown",
+    category: "selection",
+    keys: ["PageDown"],
+    displayKeys: "Page Down",
+    description: "Move view and selection one page down",
+    explorerBehavior: "Scrolls and selects one screenful downwards",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "select.ctrl_space",
+    category: "selection",
+    keys: ["Ctrl", " "],
+    displayKeys: "Ctrl + Space",
+    description: "Toggle selection of focused item",
+    explorerBehavior: "Toggles item selection without clearing other selected items",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+
+  // --- View & Tabs ---
+  {
+    id: "view.details",
+    category: "view",
+    keys: ["Ctrl", "1"],
+    displayKeys: "Ctrl + 1 / Ctrl + Shift + 6",
+    description: "Switch to Details list view",
+    explorerBehavior: "Switches current folder display to Details layout",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "view.grid",
+    category: "view",
+    keys: ["Ctrl", "2"],
+    displayKeys: "Ctrl + 2 / Ctrl + Shift + 2",
+    description: "Switch to Grid / Large Icons view",
+    explorerBehavior: "Switches current folder display to Grid layout",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "view.zoom_in",
+    category: "view",
+    keys: ["Ctrl", "+"],
+    displayKeys: "Ctrl + +",
+    description: "Increase icon and thumbnail size",
+    explorerBehavior: "Zooms in icon size smoothly",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "view.zoom_out",
+    category: "view",
+    keys: ["Ctrl", "-"],
+    displayKeys: "Ctrl + -",
+    description: "Decrease icon and thumbnail size",
+    explorerBehavior: "Zooms out icon size smoothly",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "view.zoom_reset",
+    category: "view",
+    keys: ["Ctrl", "0"],
+    displayKeys: "Ctrl + 0",
+    description: "Reset icon zoom to default size",
+    explorerBehavior: "Restores standard icon size",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "tabs.new",
+    category: "tabs",
+    keys: ["Ctrl", "t"],
+    displayKeys: "Ctrl + T",
+    description: "Open a new tab",
+    explorerBehavior: "Opens a new tab matching current directory (Win 11 Explorer)",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "tabs.close",
+    category: "tabs",
+    keys: ["Ctrl", "w"],
+    displayKeys: "Ctrl + W",
+    description: "Close active tab",
+    explorerBehavior: "Closes current tab in Windows 11 Explorer",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "tabs.next",
+    category: "tabs",
+    keys: ["Ctrl", "Tab"],
+    displayKeys: "Ctrl + Tab",
+    description: "Switch to the next tab",
+    explorerBehavior: "Cycles forward through open tabs",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
+    id: "tabs.prev",
+    category: "tabs",
+    keys: ["Ctrl", "Shift", "Tab"],
+    displayKeys: "Ctrl + Shift + Tab",
+    description: "Switch to the previous tab",
+    explorerBehavior: "Cycles backward through open tabs",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+
+  // --- Help & Reference ---
+  {
+    id: "help.shortcuts",
+    category: "help",
+    keys: ["F1"],
+    displayKeys: "F1",
+    description: "Open keyboard shortcuts reference",
+    explorerBehavior: "Opens Windows Help and Support",
+    finestFileSupport: "custom",
+    differences: "Opens FinestFile Searchable In-App Shortcut Reference Modal",
+    preventInInput: false,
+  },
+];
+
+/**
+ * Checks if the user is currently typing in an editable field
+ * (input, textarea, or contentEditable).
+ */
+export function isInputFocused(target: EventTarget | null): boolean {
+  if (!target || !(target instanceof HTMLElement)) return false;
+  const tagName = target.tagName.toLowerCase();
+  if (tagName === "input") {
+    const inputType = (target as HTMLInputElement).type.toLowerCase();
+    // Non-text inputs (like checkbox, radio, button) don't capture typing shortcuts
+    return !["checkbox", "radio", "button", "submit", "reset"].includes(inputType);
+  }
+  if (tagName === "textarea" || target.isContentEditable) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Matches a native KeyboardEvent against a ShortcutDefinition.
+ */
+export function matchesShortcut(event: KeyboardEvent, shortcut: ShortcutDefinition): boolean {
+  const reqCtrl = shortcut.keys.includes("Ctrl");
+  const reqShift = shortcut.keys.includes("Shift");
+  const reqAlt = shortcut.keys.includes("Alt");
+
+  // Check modifiers
+  const ctrlActive = event.ctrlKey || event.metaKey;
+  if (reqCtrl !== ctrlActive) return false;
+  if (reqShift !== event.shiftKey) return false;
+  if (reqAlt !== event.altKey) return false;
+
+  // Find non-modifier key
+  const mainKey = shortcut.keys.find((k) => !["Ctrl", "Shift", "Alt"].includes(k));
+  if (!mainKey) return false;
+
+  if (mainKey === "+" && (event.key === "+" || event.key === "=")) {
+    return true;
+  }
+  if (mainKey === "-" && (event.key === "-" || event.key === "_")) {
+    return true;
+  }
+
+  return event.key.toLowerCase() === mainKey.toLowerCase();
+}
