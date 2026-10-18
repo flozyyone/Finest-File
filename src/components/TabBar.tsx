@@ -1,5 +1,6 @@
 import React from "react";
 import { Plus, X } from "lucide-react";
+import { useI18n } from "../i18n";
 import styles from "./TabBar.module.css";
 
 export interface TabItem {
@@ -25,6 +26,8 @@ export const TabBar: React.FC<TabBarProps> = ({
   onCloseTab,
   onNewTab,
 }) => {
+  const { dict } = useI18n();
+
   return (
     <div className={styles.tabBar}>
       <div className={styles.tabsContainer}>
@@ -37,7 +40,7 @@ export const TabBar: React.FC<TabBarProps> = ({
               onClick={() => onSelectTab(tab.id)}
               title={tab.path}
             >
-              <span className={styles.tabTitle}>{tab.title || "Home"}</span>
+              <span className={styles.tabTitle}>{tab.title || dict.nav.thisPc}</span>
               {tabs.length > 1 && (
                 <button
                   className={styles.closeBtn}
@@ -45,7 +48,7 @@ export const TabBar: React.FC<TabBarProps> = ({
                     e.stopPropagation();
                     onCloseTab(tab.id);
                   }}
-                  title="Close tab (Ctrl+W)"
+                  title={`${dict.nav.closeTab} (Ctrl+W)`}
                 >
                   <X size={12} />
                 </button>
@@ -55,7 +58,11 @@ export const TabBar: React.FC<TabBarProps> = ({
         })}
       </div>
 
-      <button className={styles.newTabBtn} onClick={onNewTab} title="New tab (Ctrl+T)">
+      <button
+        className={styles.newTabBtn}
+        onClick={onNewTab}
+        title={`${dict.nav.newTab} (Ctrl+T)`}
+      >
         <Plus size={15} />
       </button>
     </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -8,6 +8,7 @@ import {
   ChevronRight,
   X,
 } from "lucide-react";
+import { useI18n } from "../i18n";
 import styles from "./AddressBar.module.css";
 
 interface AddressBarProps {
@@ -39,13 +40,13 @@ export const AddressBar: React.FC<AddressBarProps> = ({
   searchQuery,
   onSearchChange,
   onClearSearch,
-  isSearching,
   focusAddressTrigger,
   focusSearchTrigger,
 }) => {
+  const { dict, dir } = useI18n();
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(currentPath);
-  const searchInputRef = React.useRef<HTMLInputElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setEditText(currentPath);
@@ -64,12 +65,10 @@ export const AddressBar: React.FC<AddressBarProps> = ({
     }
   }, [focusSearchTrigger]);
 
-  // Split path for breadcrumbs
   const getBreadcrumbs = () => {
     const parts = currentPath.split(/[/\\]+/).filter(Boolean);
     const crumbs: { name: string; path: string }[] = [];
 
-    // On Windows, the first element might be "C:"
     let accumulated = "";
     for (let i = 0; i < parts.length; i++) {
       if (i === 0 && parts[i].endsWith(":")) {
@@ -101,32 +100,32 @@ export const AddressBar: React.FC<AddressBarProps> = ({
     <div className={styles.bar}>
       <div className={styles.navButtons}>
         <button
-          className={styles.iconBtn}
+          className={`${styles.iconBtn} ${dir === "rtl" ? "rtlMirror" : ""}`}
           disabled={!canGoBack}
           onClick={onGoBack}
-          title="Back (Alt+Left Arrow)"
+          title={`${dict.common.back} (Alt+Left)`}
         >
           <ArrowLeft size={16} />
         </button>
         <button
-          className={styles.iconBtn}
+          className={`${styles.iconBtn} ${dir === "rtl" ? "rtlMirror" : ""}`}
           disabled={!canGoForward}
           onClick={onGoForward}
-          title="Forward (Alt+Right Arrow)"
+          title={`${dict.common.forward} (Alt+Right)`}
         >
           <ArrowRight size={16} />
         </button>
         <button
           className={styles.iconBtn}
           onClick={onGoUp}
-          title="Up one level (Alt+Up Arrow)"
+          title={`${dict.common.up} (Alt+Up, Backspace)`}
         >
           <ArrowUp size={16} />
         </button>
         <button
           className={styles.iconBtn}
           onClick={onRefresh}
-          title="Refresh (F5, Ctrl+R)"
+          title={`${dict.common.refresh} (F5, Ctrl+R)`}
         >
           <RotateCw size={15} />
         </button>
@@ -141,16 +140,17 @@ export const AddressBar: React.FC<AddressBarProps> = ({
         {isEditing ? (
           <input
             type="text"
-            className={styles.addressInput}
+            className={`${styles.addressInput} addressInput filePath`}
             value={editText}
             onChange={(e) => setEditText(e.target.value)}
             onKeyDown={handleKeyDown}
             onBlur={() => setIsEditing(false)}
             autoFocus
             spellCheck={false}
+            dir="ltr"
           />
         ) : (
-          <div className={styles.breadcrumbs}>
+          <div className={`${styles.breadcrumbs} filePath`} dir="ltr">
             {getBreadcrumbs().map((c, i, arr) => (
               <React.Fragment key={c.path}>
                 <button
@@ -177,13 +177,13 @@ export const AddressBar: React.FC<AddressBarProps> = ({
           ref={searchInputRef}
           type="text"
           className={styles.searchInput}
-          placeholder="Search folder (Ctrl+F, F3)"
+          placeholder={dict.nav.searchPlaceholder}
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           spellCheck={false}
         />
         {searchQuery ? (
-          <button className={styles.clearSearchBtn} onClick={onClearSearch}>
+          <button className={styles.clearSearchBtn} onClick={onClearSearch} title={dict.common.clear}>
             <X size={14} />
           </button>
         ) : null}

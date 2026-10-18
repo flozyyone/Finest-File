@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
   SortField,
-  SortDirection,
   GroupMode,
   ViewPreferences,
 } from "../types";
@@ -14,6 +13,7 @@ import {
   ChevronDown,
   RotateCcw,
 } from "lucide-react";
+import { useI18n } from "../i18n";
 import styles from "./ViewToolbar.module.css";
 
 interface ViewToolbarProps {
@@ -31,6 +31,7 @@ export const ViewToolbar: React.FC<ViewToolbarProps> = ({
   onPrefsChange,
   onResetView,
 }) => {
+  const { dict } = useI18n();
   const [sortOpen, setSortOpen] = useState(false);
   const [groupOpen, setGroupOpen] = useState(false);
 
@@ -51,24 +52,27 @@ export const ViewToolbar: React.FC<ViewToolbarProps> = ({
   }, []);
 
   const sortFields: { id: SortField; label: string }[] = [
-    { id: "name", label: "Name" },
-    { id: "date_modified", label: "Date modified" },
-    { id: "extension", label: "Type" },
-    { id: "size", label: "Size" },
-    { id: "date_created", label: "Date created" },
-    { id: "date_accessed", label: "Date last accessed" },
-    { id: "attributes", label: "Attributes" },
+    { id: "name", label: dict.view.name },
+    { id: "date_modified", label: dict.view.dateModified },
+    { id: "extension", label: dict.view.type },
+    { id: "size", label: dict.view.size },
+    { id: "date_created", label: dict.view.dateCreated },
+    { id: "date_accessed", label: dict.view.dateAccessed },
+    { id: "attributes", label: dict.view.attributes },
   ];
 
   const groupModes: { id: GroupMode; label: string }[] = [
-    { id: "none", label: "(None)" },
-    { id: "name_range", label: "Name" },
-    { id: "date_modified", label: "Date modified" },
-    { id: "extension", label: "Type" },
-    { id: "size", label: "Size" },
-    { id: "date_created", label: "Date created" },
-    { id: "attributes", label: "Attributes" },
+    { id: "none", label: dict.view.none },
+    { id: "name_range", label: dict.view.name },
+    { id: "date_modified", label: dict.view.dateModified },
+    { id: "extension", label: dict.view.type },
+    { id: "size", label: dict.view.size },
+    { id: "date_created", label: dict.view.dateCreated },
+    { id: "attributes", label: dict.view.attributes },
   ];
+
+  const activeGroupLabel =
+    groupModes.find((g) => g.id === prefs.groupMode)?.label || prefs.groupMode;
 
   return (
     <div className={styles.toolbar}>
@@ -77,18 +81,18 @@ export const ViewToolbar: React.FC<ViewToolbarProps> = ({
         <button
           className={`${styles.toolBtn} ${viewMode === "details" ? styles.active : ""}`}
           onClick={() => onViewModeChange("details")}
-          title="Details view"
+          title={dict.view.details}
         >
           <List size={15} />
-          <span>Details</span>
+          <span>{dict.view.details}</span>
         </button>
         <button
           className={`${styles.toolBtn} ${viewMode === "grid" ? styles.active : ""}`}
           onClick={() => onViewModeChange("grid")}
-          title="Grid view"
+          title={dict.view.grid}
         >
           <LayoutGrid size={15} />
-          <span>Grid</span>
+          <span>{dict.view.grid}</span>
         </button>
       </div>
 
@@ -102,16 +106,16 @@ export const ViewToolbar: React.FC<ViewToolbarProps> = ({
             setSortOpen(!sortOpen);
             setGroupOpen(false);
           }}
-          title="Sort by..."
+          title={dict.view.sortBy}
         >
           <ArrowUpDown size={15} />
-          <span>Sort</span>
+          <span>{dict.view.sortBy}</span>
           <ChevronDown size={12} className={styles.chevron} />
         </button>
 
         {sortOpen && (
           <div className={styles.menu}>
-            <div className={styles.menuHeader}>Sort by</div>
+            <div className={styles.menuHeader}>{dict.view.sortBy}</div>
             {sortFields.map((f) => {
               const isSelected = prefs.sortField === f.id;
               return (
@@ -145,7 +149,7 @@ export const ViewToolbar: React.FC<ViewToolbarProps> = ({
                   <Check size={13} color="var(--accent)" />
                 )}
               </span>
-              <span>Ascending</span>
+              <span>{dict.view.ascending}</span>
             </button>
             <button
               className={styles.menuItem}
@@ -159,7 +163,7 @@ export const ViewToolbar: React.FC<ViewToolbarProps> = ({
                   <Check size={13} color="var(--accent)" />
                 )}
               </span>
-              <span>Descending</span>
+              <span>{dict.view.descending}</span>
             </button>
 
             <div className={styles.menuDivider} />
@@ -174,7 +178,7 @@ export const ViewToolbar: React.FC<ViewToolbarProps> = ({
               <span className={styles.menuCheck}>
                 {prefs.foldersFirst && <Check size={13} color="var(--accent)" />}
               </span>
-              <span>Keep folders on top</span>
+              <span>{dict.view.foldersFirst}</span>
             </button>
           </div>
         )}
@@ -190,19 +194,19 @@ export const ViewToolbar: React.FC<ViewToolbarProps> = ({
             setGroupOpen(!groupOpen);
             setSortOpen(false);
           }}
-          title="Group by..."
+          title={dict.view.groupBy}
         >
           <Layers size={15} />
           <span>
-            Group
-            {prefs.groupMode !== "none" ? ` (${prefs.groupMode.replace("_", " ")})` : ""}
+            {dict.view.groupBy}
+            {prefs.groupMode !== "none" ? ` (${activeGroupLabel})` : ""}
           </span>
           <ChevronDown size={12} className={styles.chevron} />
         </button>
 
         {groupOpen && (
           <div className={styles.menu}>
-            <div className={styles.menuHeader}>Group by</div>
+            <div className={styles.menuHeader}>{dict.view.groupBy}</div>
             {groupModes.map((g) => {
               const isSelected = prefs.groupMode === g.id;
               return (
@@ -238,7 +242,7 @@ export const ViewToolbar: React.FC<ViewToolbarProps> = ({
                       <Check size={13} color="var(--accent)" />
                     )}
                   </span>
-                  <span>Ascending</span>
+                  <span>{dict.view.ascending}</span>
                 </button>
                 <button
                   className={styles.menuItem}
@@ -252,7 +256,7 @@ export const ViewToolbar: React.FC<ViewToolbarProps> = ({
                       <Check size={13} color="var(--accent)" />
                     )}
                   </span>
-                  <span>Descending</span>
+                  <span>{dict.view.descending}</span>
                 </button>
               </>
             )}
@@ -266,10 +270,10 @@ export const ViewToolbar: React.FC<ViewToolbarProps> = ({
       <button
         className={styles.toolBtn}
         onClick={onResetView}
-        title="Reset view to default sorting and grouping"
+        title={dict.view.resetView}
       >
         <RotateCcw size={14} />
-        <span>Reset view</span>
+        <span>{dict.view.resetView}</span>
       </button>
     </div>
   );

@@ -8,6 +8,21 @@ use std::path::{Path, PathBuf};
 
 use crate::sorting::ViewPreferences;
 
+fn default_language() -> String {
+    #[cfg(windows)]
+    {
+        if let Ok(lang) = std::env::var("LANG") {
+            let l = lang.to_lowercase();
+            for prefix in &["tr", "ur", "fr", "de", "ar", "ru", "es"] {
+                if l.starts_with(prefix) {
+                    return (*prefix).to_string();
+                }
+            }
+        }
+    }
+    "en".into()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AppSettings {
@@ -15,12 +30,15 @@ pub struct AppSettings {
     pub accent_color: String, // "blue", "teal", "purple", "amber", "emerald", "slate"
     pub font_family: String, // "system", "segoe", "cascadia", "aptos", "consolas"
     pub font_size: String, // "small", "medium", "large"
+    #[serde(default = "default_language")]
+    pub language: String, // "tr", "en", "ur", "fr", "de", "ar", "ru", "es"
     pub show_hidden_files: bool,
     pub show_file_extensions: bool,
     pub default_view_mode: String, // "details", "grid"
     pub dual_pane_enabled: bool,
     pub confirm_delete: bool,
     pub view_preferences: ViewPreferences,
+    #[serde(default)]
     pub custom_shortcuts: std::collections::HashMap<String, String>,
     pub index: IndexSettings,
 }
@@ -32,6 +50,7 @@ impl Default for AppSettings {
             accent_color: "blue".into(),
             font_family: "system".into(),
             font_size: "medium".into(),
+            language: default_language(),
             show_hidden_files: false,
             show_file_extensions: true,
             default_view_mode: "details".into(),

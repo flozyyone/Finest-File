@@ -187,3 +187,35 @@ input[type="text"], input[type="search"] {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
 }
+
+/* Right-to-Left (RTL) Layout Support for Arabic and Urdu */
+[dir="rtl"] {
+  text-align: right;
+}
+
+[dir="rtl"] input,
+[dir="rtl"] select,
+[dir="rtl"] textarea {
+  text-align: right;
+}
+
+/* Technical strings, filenames, paths, drive letters, keyboard shortcuts and numbers MUST remain LTR */
+[dir="rtl"] .addressInput,
+[dir="rtl"] .filePath,
+[dir="rtl"] .fileName,
+[dir="rtl"] .fileSize,
+[dir="rtl"] .fileExt,
+[dir="rtl"] .driveLetter,
+[dir="rtl"] .kbd,
+[dir="rtl"] code,
+[dir="rtl"] pre,
+[dir="rtl"] [data-direction="ltr"] {
+  direction: ltr !important;
+  text-align: left !important;
+  unicode-bidi: plaintext !important;
+}
+
+[dir="rtl"] .rtlMirror {
+  transform: scaleX(-1);
+}
+

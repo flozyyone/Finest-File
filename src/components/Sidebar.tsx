@@ -10,11 +10,11 @@ import {
   HardDrive,
   Settings,
   Activity,
-  Layers,
   Keyboard,
 } from "lucide-react";
 import { DriveInfo, KnownFolder } from "../types";
 import { formatBytes } from "../utils/format";
+import { useI18n } from "../i18n";
 import styles from "./Sidebar.module.css";
 
 interface SidebarProps {
@@ -38,6 +38,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenShortcuts,
   activeJobCount,
 }) => {
+  const { dict } = useI18n();
+
   const getKnownIcon = (id: string) => {
     switch (id) {
       case "home":
@@ -59,6 +61,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
   };
 
+  const getKnownFolderName = (kf: KnownFolder) => {
+    switch (kf.id) {
+      case "home":
+        return dict.nav.thisPc;
+      case "desktop":
+        return dict.nav.desktop;
+      case "documents":
+        return dict.nav.documents;
+      case "downloads":
+        return dict.nav.downloads;
+      case "pictures":
+        return dict.nav.pictures;
+      case "music":
+        return dict.nav.music;
+      case "videos":
+        return dict.nav.videos;
+      default:
+        return kf.name;
+    }
+  };
+
   const isSelected = (p: string) =>
     currentPath.toLowerCase() === p.toLowerCase() ||
     currentPath.toLowerCase() === p.toLowerCase() + "\\";
@@ -66,7 +89,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <aside className={styles.sidebar}>
       <div className={styles.section}>
-        <div className={styles.sectionHeader}>Quick access</div>
+        <div className={styles.sectionHeader}>{dict.nav.quickAccess}</div>
         {knownFolders.map((kf) => (
           <button
             key={kf.id}
@@ -75,13 +98,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
             title={kf.path}
           >
             <span className={styles.itemIcon}>{getKnownIcon(kf.id)}</span>
-            <span className={styles.itemLabel}>{kf.name}</span>
+            <span className={styles.itemLabel}>{getKnownFolderName(kf)}</span>
           </button>
         ))}
       </div>
 
       <div className={styles.section}>
-        <div className={styles.sectionHeader}>Drives</div>
+        <div className={styles.sectionHeader}>{dict.nav.drives}</div>
         {drives.map((d) => {
           const usedPct =
             d.totalBytes && d.freeBytes
@@ -93,14 +116,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
               key={d.path}
               className={`${styles.driveItem} ${isSelected(d.path) ? styles.active : ""}`}
               onClick={() => onNavigate(d.path)}
-              title={`${d.path} (${d.fileSystem || "drive"})\n${formatBytes(d.freeBytes)} free of ${formatBytes(d.totalBytes)}`}
+              title={`${d.path} (${d.fileSystem || "drive"})\n${formatBytes(d.freeBytes)} / ${formatBytes(d.totalBytes)}`}
             >
               <div className={styles.driveRow}>
                 <span className={styles.itemIcon}>
                   <HardDrive size={16} />
                 </span>
-                <span className={styles.itemLabel}>
-                  {d.label ? `${d.label} (${d.letter}:)` : `Local Disk (${d.letter}:)`}
+                <span className={`${styles.itemLabel} driveLetter`}>
+                  {d.label ? `${d.label} (${d.letter}:)` : `${d.letter}:`}
                 </span>
               </div>
               {d.totalBytes ? (
@@ -114,8 +137,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       }}
                     />
                   </div>
-                  <span className={styles.driveText}>
-                    {formatBytes(d.freeBytes)} free
+                  <span className={`${styles.driveText} fileSize`}>
+                    {formatBytes(d.freeBytes)}
                   </span>
                 </div>
               ) : null}
@@ -125,22 +148,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       <div className={styles.footer}>
-        <button className={styles.footerBtn} onClick={onOpenJobs} title="Background Operations">
+        <button className={styles.footerBtn} onClick={onOpenJobs} title={dict.jobs.title}>
           <Activity size={16} />
-          <span>Operations</span>
+          <span>{dict.jobs.title}</span>
           {activeJobCount > 0 && (
             <span className={styles.badge}>{activeJobCount}</span>
           )}
         </button>
         {onOpenShortcuts && (
-          <button className={styles.footerBtn} onClick={onOpenShortcuts} title="Keyboard Shortcuts (F1)">
+          <button className={styles.footerBtn} onClick={onOpenShortcuts} title={dict.shortcuts.title}>
             <Keyboard size={16} />
-            <span>Shortcuts</span>
+            <span>{dict.common.properties === "Properties" ? "Shortcuts" : dict.view.keyboardShortcuts}</span>
           </button>
         )}
-        <button className={styles.footerBtn} onClick={onOpenSettings} title="Settings">
+        <button className={styles.footerBtn} onClick={onOpenSettings} title={dict.settings.title}>
           <Settings size={16} />
-          <span>Settings</span>
+          <span>{dict.view.settings}</span>
         </button>
       </div>
     </aside>

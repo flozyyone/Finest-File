@@ -2,6 +2,7 @@ import React from "react";
 import { JobProgress } from "../types";
 import { formatBytes } from "../utils/format";
 import { X, CheckCircle, AlertCircle, Ban, Loader2, Trash } from "lucide-react";
+import { useI18n } from "../i18n";
 import styles from "./JobsPanel.module.css";
 
 interface JobsPanelProps {
@@ -19,6 +20,8 @@ export const JobsPanel: React.FC<JobsPanelProps> = ({
   onCancelJob,
   onClearFinished,
 }) => {
+  const { dict } = useI18n();
+
   if (!isOpen) return null;
 
   const getStateIcon = (state: JobProgress["state"]) => {
@@ -40,17 +43,17 @@ export const JobsPanel: React.FC<JobsPanelProps> = ({
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.panel} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
-          <span className={styles.title}>File Operations</span>
+          <span className={styles.title}>{dict.jobs.title}</span>
           <div className={styles.headerActions}>
             <button
               className={styles.headerBtn}
               onClick={onClearFinished}
-              title="Clear finished"
+              title={dict.jobs.clearCompleted}
             >
               <Trash size={14} />
-              <span>Clear</span>
+              <span>{dict.common.clear}</span>
             </button>
-            <button className={styles.closeBtn} onClick={onClose}>
+            <button className={styles.closeBtn} onClick={onClose} aria-label={dict.common.close}>
               <X size={16} />
             </button>
           </div>
@@ -58,7 +61,7 @@ export const JobsPanel: React.FC<JobsPanelProps> = ({
 
         <div className={styles.body}>
           {jobs.length === 0 ? (
-            <div className={styles.empty}>No recent file operations</div>
+            <div className={styles.empty}>{dict.jobs.noJobs}</div>
           ) : (
             jobs.map((job) => {
               const pct =
@@ -80,13 +83,13 @@ export const JobsPanel: React.FC<JobsPanelProps> = ({
                         className={styles.cancelBtn}
                         onClick={() => onCancelJob(job.id)}
                       >
-                        Cancel
+                        {dict.common.cancel}
                       </button>
                     )}
                   </div>
 
                   {job.current && (
-                    <div className={styles.jobCurrent} title={job.current}>
+                    <div className={`${styles.jobCurrent} filePath`} dir="ltr" title={job.current}>
                       {job.current}
                     </div>
                   )}
@@ -99,11 +102,11 @@ export const JobsPanel: React.FC<JobsPanelProps> = ({
                           style={{ width: `${pct}%` }}
                         />
                       </div>
-                      <div className={styles.progressText}>
+                      <div className={`${styles.progressText} fileSize`} dir="ltr">
                         <span>
                           {job.bytesTotal > 0
                             ? `${formatBytes(job.bytesDone)} / ${formatBytes(job.bytesTotal)}`
-                            : `${job.itemsDone} / ${job.itemsTotal} items`}
+                            : `${job.itemsDone} / ${job.itemsTotal}`}
                         </span>
                         <span>{pct}%</span>
                       </div>

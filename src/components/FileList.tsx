@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
 import { FileEntry, FileGroup, SortField, ViewPreferences } from "../types";
 import { FileIcon } from "./FileIcon";
-import { formatBytes, formatDate } from "../utils/format";
+import { formatBytes } from "../utils/format";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import { useI18n } from "../i18n";
 import styles from "./FileList.module.css";
 
 interface FileListProps {
@@ -44,6 +45,7 @@ export const FileList: React.FC<FileListProps> = ({
   onZoomOut,
   onGoUp,
 }) => {
+  const { dict, formatDateTime, dir } = useI18n();
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -58,65 +60,70 @@ export const FileList: React.FC<FileListProps> = ({
     if (entry.kind === "directory" || showExtensions || !entry.ext) {
       return entry.name;
     }
-    const lastDot = entry.name.lastIndexOf(".");
-    return lastDot > 0 ? entry.name.substring(0, lastDot) : entry.name;
+    const dotIndex = entry.name.lastIndexOf(".");
+    return dotIndex > 0 ? entry.name.substring(0, dotIndex) : entry.name;
   };
+
+  const processedGroups = groups.map((g) => ({
+    ...g,
+    items: g.items.filter((item) => showHidden || !item.hidden),
+  }));
+
+  const allItems = processedGroups.flatMap((g) => g.items);
+  const totalItemsCount = allItems.length;
+
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.focus();
+    }
+  }, [selectedPaths]);
 
   const handleRowClick = (e: React.MouseEvent, entry: FileEntry) => {
     e.stopPropagation();
-    onSelect(entry, e.ctrlKey || e.metaKey, e.shiftKey);
+    const isMulti = e.ctrlKey || e.metaKey;
+    const isRange = e.shiftKey;
+    onSelect(entry, isMulti, isRange);
   };
 
-  // Filter hidden files per group
-  const processedGroups = groups
-    .map((g) => ({
-      ...g,
-      items: g.items.filter((e) => {
-        if (!showHidden && (e.hidden || e.system)) return false;
-        return true;
-      }),
-    }))
-    .filter((g) => g.items.length > 0);
-
-  const totalItemsCount = processedGroups.reduce((acc, g) => acc + g.items.length, 0);
-  const allVisibleItems = processedGroups.flatMap((g) => g.items);
-
-  // List keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (renamingPath) return; // Don't intercept while user is renaming
-    if (allVisibleItems.length === 0) return;
+    if (renamingPath !== null) return;
 
-    const selectedIndex = allVisibleItems.findIndex((item) =>
-      selectedPaths.includes(item.path)
-    );
-
-    if (e.key === "ArrowDown") {
+    if (e.key === "Enter") {
+      if (selectedPaths.length === 1) {
+        const found = allItems.find((en) => en.path === selectedPaths[0]);
+        if (found) {
+          e.preventDefault();
+          onOpen(found);
+        }
+      }
+    } else if (e.key === "ArrowDown") {
       e.preventDefault();
-      const nextIdx = Math.min(allVisibleItems.length - 1, selectedIndex + 1);
-      onSelect(allVisibleItems[nextIdx], false, e.shiftKey);
+      if (allItems.length === 0) return;
+      if (selectedPaths.length === 0) {
+        onSelect(allItems[0], false, false);
+      } else {
+        const lastSelected = selectedPaths[selectedPaths.length - 1];
+        const curIdx = allItems.findIndex((en) => en.path === lastSelected);
+        const nextIdx = Math.min(allItems.length - 1, curIdx + 1);
+        onSelect(allItems[nextIdx], e.ctrlKey, e.shiftKey);
+      }
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      const prevIdx = Math.max(0, selectedIndex <= 0 ? 0 : selectedIndex - 1);
-      onSelect(allVisibleItems[prevIdx], false, e.shiftKey);
+      if (allItems.length === 0) return;
+      if (selectedPaths.length === 0) {
+        onSelect(allItems[0], false, false);
+      } else {
+        const lastSelected = selectedPaths[selectedPaths.length - 1];
+        const curIdx = allItems.findIndex((en) => en.path === lastSelected);
+        const prevIdx = Math.max(0, curIdx - 1);
+        onSelect(allItems[prevIdx], e.ctrlKey, e.shiftKey);
+      }
     } else if (e.key === "Home") {
       e.preventDefault();
-      onSelect(allVisibleItems[0], false, e.shiftKey);
+      if (allItems.length > 0) onSelect(allItems[0], false, false);
     } else if (e.key === "End") {
       e.preventDefault();
-      onSelect(allVisibleItems[allVisibleItems.length - 1], false, e.shiftKey);
-    } else if (e.key === "PageDown") {
-      e.preventDefault();
-      const targetIdx = Math.min(allVisibleItems.length - 1, selectedIndex + 8);
-      onSelect(allVisibleItems[targetIdx], false, e.shiftKey);
-    } else if (e.key === "PageUp") {
-      e.preventDefault();
-      const targetIdx = Math.max(0, selectedIndex - 8);
-      onSelect(allVisibleItems[targetIdx], false, e.shiftKey);
-    } else if (e.key === "Enter") {
-      if (selectedIndex >= 0) {
-        e.preventDefault();
-        onOpen(allVisibleItems[selectedIndex]);
-      }
+      if (allItems.length > 0) onSelect(allItems[allItems.length - 1], false, false);
     } else if (e.key === "Backspace") {
       if (onGoUp) {
         e.preventDefault();
@@ -142,7 +149,7 @@ export const FileList: React.FC<FileListProps> = ({
         className={styles.emptyContainer}
         onContextMenu={(e) => onContextMenu(e)}
       >
-        <span className={styles.emptyText}>This folder is empty.</span>
+        <span className={styles.emptyText}>{dict.errors.emptyFolder}</span>
       </div>
     );
   }
@@ -174,9 +181,10 @@ export const FileList: React.FC<FileListProps> = ({
         {isRenaming ? (
           <input
             type="text"
-            className={styles.inlineRenameInput}
+            className={`${styles.inlineRenameInput} fileName`}
             defaultValue={entry.name}
             autoFocus
+            dir="ltr"
             onFocus={(e) => {
               const dot = entry.name.lastIndexOf(".");
               if (dot > 0 && entry.kind === "file") {
@@ -193,7 +201,9 @@ export const FileList: React.FC<FileListProps> = ({
             onClick={(e) => e.stopPropagation()}
           />
         ) : (
-          <span className={styles.gridLabel}>{renderDisplayName(entry)}</span>
+          <span className={`${styles.gridLabel} fileName`} dir="ltr">
+            {renderDisplayName(entry)}
+          </span>
         )}
       </div>
     );
@@ -220,9 +230,10 @@ export const FileList: React.FC<FileListProps> = ({
           {isRenaming ? (
             <input
               type="text"
-              className={styles.inlineRenameInput}
+              className={`${styles.inlineRenameInput} fileName`}
               defaultValue={entry.name}
               autoFocus
+              dir="ltr"
               onFocus={(e) => {
                 const dot = entry.name.lastIndexOf(".");
                 if (dot > 0 && entry.kind === "file") {
@@ -239,28 +250,25 @@ export const FileList: React.FC<FileListProps> = ({
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
-            <span className={styles.cellText}>{renderDisplayName(entry)}</span>
+            <span
+              className={`${styles.nameText} ${entry.hidden ? styles.hiddenEntry : ""} fileName`}
+              dir="ltr"
+            >
+              {renderDisplayName(entry)}
+            </span>
           )}
         </div>
 
-        <div className={`${styles.cell} ${styles.colModified}`}>
-          <span className={styles.cellSubtle}>{formatDate(entry.modified)}</span>
+        <div className={`${styles.cell} ${styles.colDate}`}>
+          {entry.modified ? formatDateTime(entry.modified) : "—"}
         </div>
 
         <div className={`${styles.cell} ${styles.colType}`}>
-          <span className={styles.cellSubtle}>
-            {entry.kind === "directory"
-              ? "File folder"
-              : entry.ext
-              ? `${entry.ext.toUpperCase()} File`
-              : "File"}
-          </span>
+          {entry.kind === "directory" ? "Folder" : entry.ext ? entry.ext.toUpperCase() + " File" : "File"}
         </div>
 
-        <div className={`${styles.cell} ${styles.colSize}`}>
-          <span className={styles.cellSubtle}>
-            {entry.kind === "directory" ? "" : formatBytes(entry.size)}
-          </span>
+        <div className={`${styles.cell} ${styles.colSize} fileSize`} dir="ltr">
+          {entry.kind === "directory" ? "" : formatBytes(entry.size)}
         </div>
       </div>
     );
@@ -268,23 +276,22 @@ export const FileList: React.FC<FileListProps> = ({
 
   return (
     <div
+      className={styles.container}
       ref={containerRef}
-      className={styles.listContainer}
       tabIndex={0}
       onKeyDown={handleKeyDown}
       onWheel={handleWheel}
       onContextMenu={(e) => onContextMenu(e)}
-      onClick={() => onSelect({} as FileEntry, false, false)}
     >
-      {/* Details View Column Headers (Only sticky in details view) */}
+      {/* Details View Header */}
       {viewMode === "details" && (
-        <div className={styles.headerRow}>
+        <div className={styles.header}>
           <div
             className={`${styles.headerCell} ${styles.colName}`}
             onClick={() => onSortChange("name")}
-            title="Sort by Name"
+            title={dict.view.name}
           >
-            <span>Name</span>
+            <span>{dict.view.name}</span>
             {prefs.sortField === "name" && (
               <span className={styles.sortIndicator}>
                 {prefs.sortDirection === "ascending" ? " ▲" : " ▼"}
@@ -292,11 +299,11 @@ export const FileList: React.FC<FileListProps> = ({
             )}
           </div>
           <div
-            className={`${styles.headerCell} ${styles.colModified}`}
+            className={`${styles.headerCell} ${styles.colDate}`}
             onClick={() => onSortChange("date_modified")}
-            title="Sort by Date modified"
+            title={dict.view.dateModified}
           >
-            <span>Date modified</span>
+            <span>{dict.view.dateModified}</span>
             {prefs.sortField === "date_modified" && (
               <span className={styles.sortIndicator}>
                 {prefs.sortDirection === "ascending" ? " ▲" : " ▼"}
@@ -306,9 +313,9 @@ export const FileList: React.FC<FileListProps> = ({
           <div
             className={`${styles.headerCell} ${styles.colType}`}
             onClick={() => onSortChange("extension")}
-            title="Sort by Type"
+            title={dict.view.type}
           >
-            <span>Type</span>
+            <span>{dict.view.type}</span>
             {prefs.sortField === "extension" && (
               <span className={styles.sortIndicator}>
                 {prefs.sortDirection === "ascending" ? " ▲" : " ▼"}
@@ -318,9 +325,9 @@ export const FileList: React.FC<FileListProps> = ({
           <div
             className={`${styles.headerCell} ${styles.colSize}`}
             onClick={() => onSortChange("size")}
-            title="Sort by Size"
+            title={dict.view.size}
           >
-            <span>Size</span>
+            <span>{dict.view.size}</span>
             {prefs.sortField === "size" && (
               <span className={styles.sortIndicator}>
                 {prefs.sortDirection === "ascending" ? " ▲" : " ▼"}
@@ -337,7 +344,7 @@ export const FileList: React.FC<FileListProps> = ({
 
           return (
             <div key={group.key} className={styles.groupSection}>
-              {/* Group Header (shown when groupMode != none) */}
+              {/* Group Header */}
               {isGrouped && (
                 <div
                   className={styles.groupHeader}
@@ -349,7 +356,7 @@ export const FileList: React.FC<FileListProps> = ({
                 >
                   <button className={styles.groupToggleBtn} aria-label="Toggle group">
                     {isCollapsed ? (
-                      <ChevronRight size={14} className={styles.chevron} />
+                      <ChevronRight size={14} className={`${styles.chevron} ${dir === "rtl" ? "rtlMirror" : ""}`} />
                     ) : (
                       <ChevronDown size={14} className={styles.chevron} />
                     )}
@@ -357,7 +364,7 @@ export const FileList: React.FC<FileListProps> = ({
                   <span className={styles.groupTitle}>{group.title}</span>
                   <span className={styles.groupCount}>({group.items.length})</span>
                   {group.totalBytes > 0 && (
-                    <span className={styles.groupSizeTotal}>
+                    <span className={`${styles.groupSizeTotal} fileSize`} dir="ltr">
                       {formatBytes(group.totalBytes)}
                     </span>
                   )}

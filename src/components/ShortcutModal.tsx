@@ -16,6 +16,7 @@ import {
   AlertCircle,
   Check,
 } from "lucide-react";
+import { useI18n, formatWithParams } from "../i18n";
 import styles from "./ShortcutModal.module.css";
 
 interface ShortcutModalProps {
@@ -31,6 +32,7 @@ export const ShortcutModal: React.FC<ShortcutModalProps> = ({
   customShortcuts = {},
   onSaveCustomShortcuts,
 }) => {
+  const { dict } = useI18n();
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<ShortcutCategory | "all">("all");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -89,13 +91,13 @@ export const ShortcutModal: React.FC<ShortcutModalProps> = ({
   if (!isOpen) return null;
 
   const categories: { id: ShortcutCategory | "all"; label: string }[] = [
-    { id: "all", label: "Tüm Kısayollar" },
-    { id: "navigation", label: "Gezinme" },
-    { id: "operations", label: "Dosya İşlemleri" },
-    { id: "selection", label: "Seçim & Liste" },
-    { id: "view", label: "Görünüm & Yakınlaştırma" },
-    { id: "tabs", label: "Sekmeler" },
-    { id: "help", label: "Yardım" },
+    { id: "all", label: dict.shortcuts.categories.all },
+    { id: "navigation", label: dict.shortcuts.categories.navigation },
+    { id: "operations", label: dict.shortcuts.categories.operations },
+    { id: "selection", label: dict.shortcuts.categories.selection },
+    { id: "view", label: dict.shortcuts.categories.view },
+    { id: "tabs", label: dict.shortcuts.categories.tabs },
+    { id: "help", label: dict.shortcuts.categories.help },
   ];
 
   const customCount = Object.keys(customShortcuts).length;
@@ -162,9 +164,9 @@ export const ShortcutModal: React.FC<ShortcutModalProps> = ({
         <div className={styles.header}>
           <div className={styles.titleArea}>
             <Keyboard size={18} color="var(--accent)" />
-            <h2 className={styles.title}>Klavye Kısayolları ve Tuş Atamaları</h2>
+            <h2 className={styles.title}>{dict.shortcuts.title}</h2>
           </div>
-          <button className={styles.closeBtn} onClick={onClose} aria-label="Kapat">
+          <button className={styles.closeBtn} onClick={onClose} aria-label={dict.common.close}>
             <X size={16} />
           </button>
         </div>
@@ -176,7 +178,7 @@ export const ShortcutModal: React.FC<ShortcutModalProps> = ({
             <input
               type="text"
               className={styles.searchInput}
-              placeholder="Kısayollarda ara (örn: 'kopyala', 'F2', 'adres', 'yakınlaştır')..."
+              placeholder={dict.shortcuts.searchPlaceholder}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               autoFocus
@@ -186,6 +188,7 @@ export const ShortcutModal: React.FC<ShortcutModalProps> = ({
                 className={styles.closeBtn}
                 onClick={() => setSearch("")}
                 style={{ padding: 2 }}
+                title={dict.common.clear}
               >
                 <X size={13} />
               </button>
@@ -218,11 +221,11 @@ export const ShortcutModal: React.FC<ShortcutModalProps> = ({
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span className={styles.shortcutDesc}>{sc.description}</span>
                     {effective.isCustom && (
-                      <span className={styles.customBadge}>Özelleştirildi</span>
+                      <span className={styles.customBadge}>{dict.common.customized}</span>
                     )}
                   </div>
                   <span className={styles.shortcutDetail}>
-                    Explorer: {sc.explorerBehavior}
+                    {dict.shortcuts.explorerBehavior}: {sc.explorerBehavior}
                     {sc.differences && ` (${sc.differences})`}
                   </span>
                 </div>
@@ -231,18 +234,22 @@ export const ShortcutModal: React.FC<ShortcutModalProps> = ({
                   <div className={styles.recordingBox}>
                     <div className={styles.recordingPrompt}>
                       {recordedKeys ? (
-                        <span>Yeni Tuş: <strong>{recordedKeys.displayKeys}</strong></span>
+                        <span>{recordedKeys.displayKeys}</span>
                       ) : heldModifiers ? (
                         <span>{heldModifiers}</span>
                       ) : (
-                        <span>Kısayol tuşlarına basın... (İptal için Esc)</span>
+                        <span>{dict.shortcuts.pressKeysPrompt}</span>
                       )}
                     </div>
 
                     {conflictShortcut && (
                       <div className={styles.conflictWarning}>
                         <AlertCircle size={12} />
-                        <span>Çakışma: Bu tuş '{conflictShortcut.description}' için atanmış</span>
+                        <span>
+                          {formatWithParams(dict.shortcuts.conflictWarning, {
+                            action: conflictShortcut.description,
+                          })}
+                        </span>
                       </div>
                     )}
 
@@ -254,7 +261,7 @@ export const ShortcutModal: React.FC<ShortcutModalProps> = ({
                         style={{ opacity: recordedKeys ? 1 : 0.6 }}
                       >
                         <Check size={13} />
-                        <span>Kaydet</span>
+                        <span>{dict.common.save}</span>
                       </button>
                       <button
                         className={styles.btnAction}
@@ -264,16 +271,16 @@ export const ShortcutModal: React.FC<ShortcutModalProps> = ({
                         }}
                       >
                         <X size={13} />
-                        <span>İptal</span>
+                        <span>{dict.common.cancel}</span>
                       </button>
                     </div>
                   </div>
                 ) : (
                   <div className={styles.rightControls}>
-                    <div className={styles.keyContainer}>
+                    <div className={`${styles.keyContainer} kbdContainer`} dir="ltr">
                       {keyParts.map((kp, idx) => (
                         <React.Fragment key={idx}>
-                          <span className={styles.kbd}>{kp}</span>
+                          <span className={`${styles.kbd} kbd`} dir="ltr">{kp}</span>
                           {idx < keyParts.length - 1 && <span className={styles.keyPlus}>+</span>}
                         </React.Fragment>
                       ))}
@@ -283,20 +290,20 @@ export const ShortcutModal: React.FC<ShortcutModalProps> = ({
                       <button
                         className={styles.btnAction}
                         onClick={() => handleResetShortcut(sc.id)}
-                        title="Varsayılan Windows Explorer kısayoluna dön"
+                        title={dict.common.reset}
                       >
                         <RotateCcw size={12} />
-                        <span>Sıfırla</span>
+                        <span>{dict.common.reset}</span>
                       </button>
                     )}
 
                     <button
                       className={styles.btnAction}
                       onClick={() => handleStartRebind(sc.id)}
-                      title="Bu kısayolu özelleştir"
+                      title={dict.common.rebind}
                     >
                       <Edit2 size={12} />
-                      <span>Değiştir</span>
+                      <span>{dict.common.rebind}</span>
                     </button>
                   </div>
                 )}
@@ -310,20 +317,24 @@ export const ShortcutModal: React.FC<ShortcutModalProps> = ({
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span className={styles.compatBadge}>
               <CheckCircle2 size={14} />
-              <span>Windows Dosya Gezgini İle %100 Uyumlu Temel</span>
+              <span>{dict.shortcuts.compatBadge}</span>
             </span>
             {customCount > 0 && (
               <button
                 className={styles.resetAllBtn}
                 onClick={handleResetAll}
-                title="Tüm özelleştirilmiş tuşları varsayılana sıfırla"
+                title={dict.common.resetAll}
               >
                 <RotateCcw size={12} />
-                <span>Tümünü Varsayılana Sıfırla ({customCount})</span>
+                <span>{dict.common.resetAll} ({customCount})</span>
               </button>
             )}
           </div>
-          <span>{filteredShortcuts.length} kısayol kayıtlı</span>
+          <span>
+            {formatWithParams(dict.shortcuts.registeredCount, {
+              count: filteredShortcuts.length,
+            })}
+          </span>
         </div>
       </div>
     </div>

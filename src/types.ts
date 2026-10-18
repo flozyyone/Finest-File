@@ -161,11 +161,14 @@ export type AccentColor = "blue" | "teal" | "purple" | "amber" | "emerald" | "sl
 export type FontFamilyOption = "system" | "segoe" | "cascadia" | "aptos" | "consolas";
 export type FontSizeOption = "small" | "medium" | "large";
 
+import type { SupportedLanguage } from "./i18n/types";
+
 export interface AppSettings {
   theme: "system" | "light" | "dark";
   accentColor: AccentColor;
   fontFamily: FontFamilyOption;
   fontSize: FontSizeOption;
+  language: SupportedLanguage;
   showHiddenFiles: boolean;
   showFileExtensions: boolean;
   defaultViewMode: "details" | "grid";

@@ -20,6 +20,7 @@ import {
   Check,
   RefreshCw,
 } from "lucide-react";
+import { useI18n } from "../i18n";
 import styles from "./ContextMenu.module.css";
 
 export interface ContextMenuProps {
@@ -73,49 +74,50 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   prefs,
   onPrefsChange,
 }) => {
+  const { dict, dir } = useI18n();
   const [activeSubmenu, setActiveSubmenu] = useState<"view" | "sort" | "group" | null>(null);
 
   const isBackground = selectedItems.length === 0;
   const isSingle = selectedItems.length === 1;
-  const single = isSingle ? selectedItems[0] : null;
-  const isArchive = single && ["zip", "7z", "rar", "tar", "gz"].includes(single.ext.toLowerCase());
+  const isArchive =
+    isSingle &&
+    selectedItems[0].kind !== "directory" &&
+    ["zip", "7z", "rar", "gz", "tar"].some((ext) =>
+      selectedItems[0].name.toLowerCase().endsWith("." + ext)
+    );
 
-  // Keep menu within viewport bounds
-  const flipHorizontal = x > window.innerWidth - 440;
-  const menuStyle = {
-    top: Math.min(y, window.innerHeight - 380),
-    left: Math.min(x, window.innerWidth - 220),
+  // Position bounds safety check
+  const menuWidth = 230;
+  const menuHeight = isBackground ? 320 : 280;
+  const adjustedX = Math.min(x, window.innerWidth - menuWidth - 10);
+  const adjustedY = Math.min(y, window.innerHeight - menuHeight - 10);
+  const flipHorizontal = adjustedX > window.innerWidth - menuWidth * 2;
+
+  const menuStyle: React.CSSProperties = {
+    top: Math.max(10, adjustedY),
+    ...(dir === "rtl"
+      ? { right: Math.max(10, window.innerWidth - adjustedX - menuWidth) }
+      : { left: Math.max(10, adjustedX) }),
   };
 
   const sortFields: { id: SortField; label: string }[] = [
-    { id: "name", label: "Name" },
-    { id: "date_modified", label: "Date modified" },
-    { id: "extension", label: "Type" },
-    { id: "size", label: "Size" },
-    { id: "date_created", label: "Date created" },
-    { id: "date_accessed", label: "Date last accessed" },
-    { id: "attributes", label: "Attributes" },
+    { id: "name", label: dict.view.name },
+    { id: "date_modified", label: dict.view.dateModified },
+    { id: "extension", label: dict.view.type },
+    { id: "size", label: dict.view.size },
+    { id: "date_created", label: dict.view.dateCreated },
   ];
 
   const groupModes: { id: GroupMode; label: string }[] = [
-    { id: "none", label: "(None)" },
-    { id: "name_range", label: "Name" },
-    { id: "date_modified", label: "Date modified" },
-    { id: "extension", label: "Type" },
-    { id: "size", label: "Size" },
-    { id: "date_created", label: "Date created" },
-    { id: "attributes", label: "Attributes" },
+    { id: "none", label: dict.view.none },
+    { id: "name_range", label: dict.view.name },
+    { id: "date_modified", label: dict.view.dateModified },
+    { id: "extension", label: dict.view.type },
+    { id: "size", label: dict.view.size },
   ];
 
   return (
-    <div
-      className={styles.overlay}
-      onClick={onClose}
-      onContextMenu={(e) => {
-        e.preventDefault();
-        onClose();
-      }}
-    >
+    <div className={styles.overlay} onClick={onClose} onContextMenu={(e) => { e.preventDefault(); onClose(); }}>
       <div
         className={styles.menu}
         style={menuStyle}
@@ -125,16 +127,16 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
           <>
             <button className={styles.item} onClick={() => { onOpen(); onClose(); }}>
               <ExternalLink size={15} />
-              <span>Open</span>
+              <span>{dict.operations.openDefault}</span>
             </button>
             <button className={styles.item} onClick={() => { onOpenWith(); onClose(); }}>
-              <span>Open with...</span>
+              <span>{dict.operations.openWith}</span>
             </button>
 
             {isArchive && (
               <button className={styles.item} onClick={() => { onExtractArchive(); onClose(); }}>
                 <FolderArchive size={15} />
-                <span>Extract All...</span>
+                <span>{dict.operations.extractArchive}</span>
               </button>
             )}
 
@@ -142,36 +144,36 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 
             <button className={styles.item} onClick={() => { onCut(); onClose(); }}>
               <Scissors size={15} />
-              <span>Cut</span>
+              <span>{dict.common.cut}</span>
               <span className={styles.shortcut}>Ctrl+X</span>
             </button>
             <button className={styles.item} onClick={() => { onCopy(); onClose(); }}>
               <Copy size={15} />
-              <span>Copy</span>
+              <span>{dict.common.copy}</span>
               <span className={styles.shortcut}>Ctrl+C</span>
             </button>
             <button className={styles.item} onClick={() => { onCopyPath(); onClose(); }}>
-              <span>Copy as path</span>
+              <span>{dict.operations.copyPath}</span>
             </button>
 
             <div className={styles.separator} />
 
             <button className={styles.item} onClick={() => { onCreateArchive(); onClose(); }}>
               <FileArchive size={15} />
-              <span>Compress to ZIP</span>
+              <span>{dict.operations.createZip}</span>
             </button>
 
             {isSingle && (
               <button className={styles.item} onClick={() => { onRename(); onClose(); }}>
                 <Edit2 size={15} />
-                <span>Rename</span>
+                <span>{dict.common.rename}</span>
                 <span className={styles.shortcut}>F2</span>
               </button>
             )}
 
             <button className={styles.item} onClick={() => { onDelete(false); onClose(); }}>
               <Trash2 size={15} />
-              <span>Delete</span>
+              <span>{dict.common.delete}</span>
               <span className={styles.shortcut}>Del</span>
             </button>
 
@@ -179,7 +181,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 
             <button className={styles.item} onClick={() => { onProperties(); onClose(); }}>
               <Info size={15} />
-              <span>Properties</span>
+              <span>{dict.common.properties}</span>
               <span className={styles.shortcut}>Alt+Enter</span>
             </button>
           </>
@@ -193,8 +195,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
               >
                 <button className={styles.item}>
                   <LayoutGrid size={15} />
-                  <span>View</span>
-                  <ChevronRight size={13} className={styles.arrowRight} />
+                  <span>{dict.view.view}</span>
+                  <ChevronRight size={13} className={`${styles.arrowRight} ${dir === "rtl" ? "rtlMirror" : ""}`} />
                 </button>
                 {activeSubmenu === "view" && (
                   <div className={`${styles.submenu} ${flipHorizontal ? styles.submenuLeft : ""}`}>
@@ -209,7 +211,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                         {viewMode === "details" && <Check size={13} color="var(--accent)" />}
                       </span>
                       <List size={14} />
-                      <span>Details</span>
+                      <span>{dict.view.details}</span>
                     </button>
                     <button
                       className={styles.item}
@@ -222,7 +224,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                         {viewMode === "grid" && <Check size={13} color="var(--accent)" />}
                       </span>
                       <LayoutGrid size={14} />
-                      <span>Grid</span>
+                      <span>{dict.view.grid}</span>
                     </button>
                   </div>
                 )}
@@ -237,8 +239,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
               >
                 <button className={styles.item}>
                   <ArrowUpDown size={15} />
-                  <span>Sort by</span>
-                  <ChevronRight size={13} className={styles.arrowRight} />
+                  <span>{dict.view.sortBy}</span>
+                  <ChevronRight size={13} className={`${styles.arrowRight} ${dir === "rtl" ? "rtlMirror" : ""}`} />
                 </button>
                 {activeSubmenu === "sort" && (
                   <div className={`${styles.submenu} ${flipHorizontal ? styles.submenuLeft : ""}`}>
@@ -270,7 +272,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                           <Check size={13} color="var(--accent)" />
                         )}
                       </span>
-                      <span>Ascending</span>
+                      <span>{dict.view.ascending}</span>
                     </button>
                     <button
                       className={styles.item}
@@ -284,7 +286,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                           <Check size={13} color="var(--accent)" />
                         )}
                       </span>
-                      <span>Descending</span>
+                      <span>{dict.view.descending}</span>
                     </button>
                     <div className={styles.separator} />
                     <button
@@ -297,7 +299,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                       <span className={styles.checkIcon}>
                         {prefs.foldersFirst && <Check size={13} color="var(--accent)" />}
                       </span>
-                      <span>Keep folders on top</span>
+                      <span>{dict.view.foldersFirst}</span>
                     </button>
                   </div>
                 )}
@@ -312,8 +314,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
               >
                 <button className={styles.item}>
                   <Layers size={15} />
-                  <span>Group by</span>
-                  <ChevronRight size={13} className={styles.arrowRight} />
+                  <span>{dict.view.groupBy}</span>
+                  <ChevronRight size={13} className={`${styles.arrowRight} ${dir === "rtl" ? "rtlMirror" : ""}`} />
                 </button>
                 {activeSubmenu === "group" && (
                   <div className={`${styles.submenu} ${flipHorizontal ? styles.submenuLeft : ""}`}>
@@ -347,7 +349,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                               <Check size={13} color="var(--accent)" />
                             )}
                           </span>
-                          <span>Ascending</span>
+                          <span>{dict.view.ascending}</span>
                         </button>
                         <button
                           className={styles.item}
@@ -361,7 +363,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                               <Check size={13} color="var(--accent)" />
                             )}
                           </span>
-                          <span>Descending</span>
+                          <span>{dict.view.descending}</span>
                         </button>
                       </>
                     )}
@@ -379,7 +381,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                 }}
               >
                 <RefreshCw size={15} />
-                <span>Refresh</span>
+                <span>{dict.common.refresh}</span>
                 <span className={styles.shortcut}>F5</span>
               </button>
             )}
@@ -388,12 +390,12 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 
             <button className={styles.item} onClick={() => { onNewFolder(); onClose(); }}>
               <FolderPlus size={15} />
-              <span>New folder</span>
+              <span>{dict.operations.newFolder}</span>
               <span className={styles.shortcut}>Ctrl+Shift+N</span>
             </button>
             <button className={styles.item} onClick={() => { onNewFile(); onClose(); }}>
               <FilePlus size={15} />
-              <span>New text document</span>
+              <span>{dict.operations.newFile}</span>
             </button>
 
             <div className={styles.separator} />
@@ -404,7 +406,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
               onClick={() => { onPaste(); onClose(); }}
             >
               <Clipboard size={15} />
-              <span>Paste</span>
+              <span>{dict.common.paste}</span>
               <span className={styles.shortcut}>Ctrl+V</span>
             </button>
 
@@ -412,7 +414,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 
             <button className={styles.item} onClick={() => { onProperties(); onClose(); }}>
               <Info size={15} />
-              <span>Properties</span>
+              <span>{dict.common.properties}</span>
             </button>
           </>
         )}

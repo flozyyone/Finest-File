@@ -21,6 +21,8 @@ import { SettingsModal } from "./components/SettingsModal";
 import { ShortcutModal } from "./components/ShortcutModal";
 import { isInputFocused, matchesShortcutId } from "./shortcuts/registry";
 import { undoStack } from "./utils/undoStack";
+import { I18nProvider, detectInitialLanguage, getLanguageInfo, getDictionary } from "./i18n";
+import type { SupportedLanguage } from "./i18n/types";
 import styles from "./App.module.css";
 
 const defaultViewPreferences: ViewPreferences = {
@@ -41,6 +43,7 @@ export const App: React.FC = () => {
     accentColor: "blue",
     fontFamily: "system",
     fontSize: "medium",
+    language: detectInitialLanguage(),
     showHiddenFiles: false,
     showFileExtensions: true,
     defaultViewMode: "details",
@@ -88,6 +91,7 @@ export const App: React.FC = () => {
   const [isJobsOpen, setIsJobsOpen] = useState(false);
   const [indexStatus, setIndexStatus] = useState<IndexStatus | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const activeJobCount = jobs.filter((j) => j.state === "running" || j.state === "queued").length;
 
   // Context Menu state
   const [contextMenu, setContextMenu] = useState<{
@@ -115,12 +119,14 @@ export const App: React.FC = () => {
     });
 
     api.getSettings().then((s) => {
-      setSettings(s);
-      setViewMode(s.defaultViewMode);
-      if (s.viewPreferences) {
-        setViewPreferences(s.viewPreferences);
+      const lang: SupportedLanguage = s.language || detectInitialLanguage();
+      const updated = { ...s, language: lang };
+      setSettings(updated);
+      setViewMode(updated.defaultViewMode);
+      if (updated.viewPreferences) {
+        setViewPreferences(updated.viewPreferences);
       }
-      applyTheme(s.theme, s.accentColor, s.fontFamily, s.fontSize);
+      applyTheme(updated.theme, updated.accentColor, updated.fontFamily, updated.fontSize, lang);
     });
 
     api.listJobs().then(setJobs);
@@ -155,7 +161,8 @@ export const App: React.FC = () => {
     theme: "system" | "light" | "dark",
     accentColor?: string,
     fontFamily?: string,
-    fontSize?: string
+    fontSize?: string,
+    language?: SupportedLanguage
   ) => {
     if (theme === "system") {
       const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -172,6 +179,12 @@ export const App: React.FC = () => {
     }
     if (fontSize) {
       document.documentElement.setAttribute("data-size", fontSize);
+    }
+
+    if (language) {
+      const langInfo = getLanguageInfo(language);
+      document.documentElement.setAttribute("lang", langInfo.code);
+      document.documentElement.setAttribute("dir", langInfo.dir);
     }
   };
 
@@ -621,11 +634,15 @@ export const App: React.FC = () => {
 
   const handleDelete = (permanent: boolean) => {
     if (selectedPaths.length === 0) return;
+    const dict = getDictionary(settings.language || "en");
     if (permanent) {
-      if (window.confirm("Are you sure you want to permanently delete these items?")) {
+      if (window.confirm(dict.operations.permanentDeleteConfirmMsg)) {
         api.deleteItemsPermanently(selectedPaths).then(() => refreshCurrentDir());
       }
     } else {
+      if (settings.confirmDelete) {
+        if (!window.confirm(dict.operations.deleteConfirmMsg)) return;
+      }
       api.trashItems(selectedPaths).then(() => refreshCurrentDir());
     }
   };
@@ -643,7 +660,8 @@ export const App: React.FC = () => {
   };
 
   const handleNewFile = () => {
-    api.createFile(activeTab.path, "New text document.txt").then((created) => {
+    const dict = getDictionary(settings.language || "en");
+    api.createFile(activeTab.path, dict.operations.fileNamePlaceholder).then((created) => {
       undoStack.push({
         type: "create",
         description: `Create file ${created}`,
@@ -671,10 +689,25 @@ export const App: React.FC = () => {
     }
   };
 
-  const activeJobCount = jobs.filter((j) => j.state === "running").length;
+  const currentDict = getDictionary(settings.language || "en");
 
   return (
-    <div className={styles.appContainer}>
+    <I18nProvider
+      language={settings.language || "en"}
+      onLanguageChange={(newLang) => {
+        const newSettings: AppSettings = { ...settings, language: newLang };
+        setSettings(newSettings);
+        applyTheme(
+          newSettings.theme,
+          newSettings.accentColor,
+          newSettings.fontFamily,
+          newSettings.fontSize,
+          newLang
+        );
+        api.updateSettings(newSettings);
+      }}
+    >
+      <div className={styles.appContainer}>
       <TabBar
         tabs={tabs}
         activeTabId={activeTabId}
@@ -754,9 +787,9 @@ export const App: React.FC = () => {
           />
 
           <div className={styles.statusBar}>
-            <span>{entries.length} items</span>
+            <span>{currentDict.view.itemsCount.replace("{count}", String(entries.length))}</span>
             {selectedPaths.length > 0 && (
-              <span>{selectedPaths.length} item(s) selected</span>
+              <span>{currentDict.view.selectedCount.replace("{count}", String(selectedPaths.length))}</span>
             )}
           </div>
         </main>
@@ -852,7 +885,8 @@ export const App: React.FC = () => {
             newSettings.theme,
             newSettings.accentColor,
             newSettings.fontFamily,
-            newSettings.fontSize
+            newSettings.fontSize,
+            newSettings.language
           );
           setViewMode(newSettings.defaultViewMode);
           api.updateSettings(newSettings);
@@ -888,6 +922,7 @@ export const App: React.FC = () => {
         }}
       />
     </div>
+    </I18nProvider>
   );
 };
 export default App;

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { AppSettings, IndexStatus } from "../types";
 import { formatBytes } from "../utils/format";
 import { X, Play, Square, RotateCcw, FolderCheck, ShieldAlert } from "lucide-react";
+import { useI18n, SUPPORTED_LANGUAGES } from "../i18n";
 import styles from "./SettingsModal.module.css";
 
 interface SettingsModalProps {
@@ -25,6 +26,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onCancelIndexScan,
   onClearIndex,
 }) => {
+  const { dict, formatDateTime } = useI18n();
+
   if (!isOpen) return null;
 
   const [activeTab, setActiveTab] = useState<"general" | "indexing" | "about">("general");
@@ -63,8 +66,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
-          <span className={styles.title}>Settings</span>
-          <button className={styles.closeBtn} onClick={onClose}>
+          <span className={styles.title}>{dict.settings.title}</span>
+          <button className={styles.closeBtn} onClick={onClose} aria-label={dict.common.close}>
             <X size={18} />
           </button>
         </div>
@@ -75,28 +78,53 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               className={`${styles.navItem} ${activeTab === "general" ? styles.activeNav : ""}`}
               onClick={() => setActiveTab("general")}
             >
-              General & Display
+              {dict.settings.generalTab}
             </button>
             <button
               className={`${styles.navItem} ${activeTab === "indexing" ? styles.activeNav : ""}`}
               onClick={() => setActiveTab("indexing")}
             >
-              File Indexing & Search
+              {dict.settings.indexingTab}
             </button>
             <button
               className={`${styles.navItem} ${activeTab === "about" ? styles.activeNav : ""}`}
               onClick={() => setActiveTab("about")}
             >
-              About FinestFile
+              FinestFile
             </button>
           </div>
 
           <div className={styles.tabContent}>
             {activeTab === "general" && (
               <div className={styles.section}>
-                <h3 className={styles.sectionTitle}>Appearance & Theme</h3>
+                <h3 className={styles.sectionTitle}>{dict.settings.language}</h3>
                 <div className={styles.row}>
-                  <label>Application Theme</label>
+                  <label>{dict.settings.language}</label>
+                  <select
+                    value={localSettings.language || "en"}
+                    onChange={(e) => {
+                      const updated = {
+                        ...localSettings,
+                        language: e.target.value as any,
+                      };
+                      setLocalSettings(updated);
+                      // Apply language change immediately
+                      onSaveSettings(updated);
+                    }}
+                  >
+                    {SUPPORTED_LANGUAGES.map((lang) => (
+                      <option key={lang.code} value={lang.code}>
+                        {lang.nativeName} ({lang.name})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <h3 className={styles.sectionTitle} style={{ marginTop: 18 }}>
+                  {dict.settings.generalTab}
+                </h3>
+                <div className={styles.row}>
+                  <label>{dict.settings.theme}</label>
                   <select
                     value={localSettings.theme}
                     onChange={(e) =>
@@ -106,14 +134,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       })
                     }
                   >
-                    <option value="system">Follow Windows System Theme</option>
-                    <option value="light">Light Theme</option>
-                    <option value="dark">Dark Theme (Charcoal)</option>
+                    <option value="system">{dict.settings.systemTheme}</option>
+                    <option value="light">{dict.settings.lightTheme}</option>
+                    <option value="dark">{dict.settings.darkTheme}</option>
                   </select>
                 </div>
 
                 <div className={styles.row}>
-                  <label>Accent Color</label>
+                  <label>{dict.settings.accentColor}</label>
                   <select
                     value={localSettings.accentColor || "blue"}
                     onChange={(e) =>
@@ -123,17 +151,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       })
                     }
                   >
-                    <option value="blue">Windows Blue (Default)</option>
-                    <option value="teal">Nordic Teal</option>
-                    <option value="purple">Royal Purple</option>
-                    <option value="amber">Warm Amber</option>
-                    <option value="emerald">Emerald Forest</option>
-                    <option value="slate">Minimal Slate</option>
+                    <option value="blue">{dict.settings.colors.blue}</option>
+                    <option value="teal">{dict.settings.colors.teal}</option>
+                    <option value="purple">{dict.settings.colors.purple}</option>
+                    <option value="amber">{dict.settings.colors.amber}</option>
+                    <option value="emerald">{dict.settings.colors.emerald}</option>
+                    <option value="slate">{dict.settings.colors.slate}</option>
                   </select>
                 </div>
 
                 <div className={styles.row}>
-                  <label>Font Family</label>
+                  <label>{dict.settings.fontFamily}</label>
                   <select
                     value={localSettings.fontFamily || "system"}
                     onChange={(e) =>
@@ -143,16 +171,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       })
                     }
                   >
-                    <option value="system">System Default (Segoe UI Variable)</option>
-                    <option value="segoe">Classic Segoe UI</option>
-                    <option value="aptos">Modern Aptos</option>
-                    <option value="cascadia">Cascadia Code / Mono</option>
-                    <option value="consolas">Consolas</option>
+                    <option value="system">{dict.settings.fonts.system}</option>
+                    <option value="segoe">{dict.settings.fonts.segoe}</option>
+                    <option value="aptos">{dict.settings.fonts.aptos}</option>
+                    <option value="cascadia">{dict.settings.fonts.cascadia}</option>
+                    <option value="consolas">{dict.settings.fonts.consolas}</option>
                   </select>
                 </div>
 
                 <div className={styles.row}>
-                  <label>Font Size / UI Density</label>
+                  <label>{dict.settings.fontSize}</label>
                   <select
                     value={localSettings.fontSize || "medium"}
                     onChange={(e) =>
@@ -162,14 +190,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       })
                     }
                   >
-                    <option value="small">Compact (11.5px)</option>
-                    <option value="medium">Standard (13px)</option>
-                    <option value="large">Spacious (14.5px)</option>
+                    <option value="small">{dict.settings.smallSize}</option>
+                    <option value="medium">{dict.settings.mediumSize}</option>
+                    <option value="large">{dict.settings.largeSize}</option>
                   </select>
                 </div>
 
                 <div className={styles.row}>
-                  <label>Default View Mode</label>
+                  <label>{dict.view.view}</label>
                   <select
                     value={localSettings.defaultViewMode}
                     onChange={(e) =>
@@ -179,13 +207,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       })
                     }
                   >
-                    <option value="details">Details List</option>
-                    <option value="grid">Grid (Icons)</option>
+                    <option value="details">{dict.view.details}</option>
+                    <option value="grid">{dict.view.grid}</option>
                   </select>
                 </div>
 
                 <h3 className={styles.sectionTitle} style={{ marginTop: 20 }}>
-                  Filesystem Display
+                  {dict.operations.deleteConfirmTitle}
                 </h3>
                 <div className={styles.checkboxRow}>
                   <input
@@ -199,7 +227,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       })
                     }
                   />
-                  <label htmlFor="showHidden">Show hidden files and system items</label>
+                  <label htmlFor="showHidden">{dict.settings.showHidden}</label>
                 </div>
 
                 <div className={styles.checkboxRow}>
@@ -214,7 +242,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       })
                     }
                   />
-                  <label htmlFor="showExts">Show file extensions for known file types</label>
+                  <label htmlFor="showExts">{dict.settings.showExtensions}</label>
                 </div>
 
                 <div className={styles.checkboxRow}>
@@ -229,81 +257,109 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       })
                     }
                   />
-                  <label htmlFor="confirmDelete">
-                    Confirm before moving items to the Recycle Bin
-                  </label>
+                  <label htmlFor="confirmDelete">{dict.settings.confirmDelete}</label>
+                </div>
+
+                <div className={styles.checkboxRow}>
+                  <input
+                    type="checkbox"
+                    id="dualPane"
+                    checked={localSettings.dualPaneEnabled}
+                    onChange={(e) =>
+                      setLocalSettings({
+                        ...localSettings,
+                        dualPaneEnabled: e.target.checked,
+                      })
+                    }
+                  />
+                  <label htmlFor="dualPane">{dict.settings.dualPane}</label>
                 </div>
               </div>
             )}
 
             {activeTab === "indexing" && (
               <div className={styles.section}>
-                <h3 className={styles.sectionTitle}>Local Metadata Indexing</h3>
-                <p className={styles.desc}>
-                  FinestFile can index directory metadata (file names, sizes, dates) into a
-                  local SQLite database for instant searching. File contents are never indexed.
-                </p>
+                <h3 className={styles.sectionTitle}>{dict.indexing.title}</h3>
+                <p className={styles.desc}>{dict.indexing.description}</p>
 
-                <div className={styles.checkboxRow} style={{ marginTop: 12 }}>
+                <div className={styles.checkboxRow}>
                   <input
                     type="checkbox"
-                    id="enableIndex"
+                    id="indexEnabled"
                     checked={localSettings.index.enabled}
                     onChange={(e) =>
                       setLocalSettings({
                         ...localSettings,
-                        index: {
-                          ...localSettings.index,
-                          enabled: e.target.checked,
-                        },
+                        index: { ...localSettings.index, enabled: e.target.checked },
                       })
                     }
                   />
-                  <label htmlFor="enableIndex">
-                    <strong>Enable automatic background indexing</strong>
-                  </label>
+                  <label htmlFor="indexEnabled">{dict.indexing.enabled}</label>
                 </div>
 
-                {indexStatus && (
-                  <div className={styles.indexStatsBox}>
-                    <div className={styles.statLine}>
-                      <span>Indexed files:</span>
-                      <strong>{indexStatus.totalFiles.toLocaleString()}</strong>
-                    </div>
-                    <div className={styles.statLine}>
-                      <span>Indexed folders:</span>
-                      <strong>{indexStatus.totalFolders.toLocaleString()}</strong>
-                    </div>
-                    <div className={styles.statLine}>
-                      <span>Total indexed size:</span>
-                      <strong>{formatBytes(indexStatus.totalBytes)}</strong>
-                    </div>
-                    {indexStatus.isScanning && (
-                      <div className={styles.statLine} style={{ color: "var(--accent)" }}>
-                        <span>Scanning now...</span>
-                        <span>{indexStatus.scannedItems} scanned</span>
-                      </div>
-                    )}
-                  </div>
-                )}
+                <div className={styles.checkboxRow}>
+                  <input
+                    type="checkbox"
+                    id="indexAutoWatch"
+                    checked={localSettings.index.autoWatch}
+                    onChange={(e) =>
+                      setLocalSettings({
+                        ...localSettings,
+                        index: { ...localSettings.index, autoWatch: e.target.checked },
+                      })
+                    }
+                  />
+                  <label htmlFor="indexAutoWatch">{dict.indexing.autoWatch}</label>
+                </div>
 
-                <div className={styles.btnRow} style={{ marginTop: 12 }}>
+                <div className={styles.statusBox}>
+                  <div className={styles.statusRow}>
+                    <span>{dict.indexing.statusIdle}:</span>
+                    <strong>
+                      {indexStatus?.isScanning
+                        ? dict.indexing.statusScanning
+                        : dict.indexing.statusIdle}
+                    </strong>
+                  </div>
+                  <div className={styles.statusRow}>
+                    <span>{dict.indexing.totalFiles}:</span>
+                    <strong className="fileSize">{indexStatus?.totalFiles?.toLocaleString() ?? 0}</strong>
+                  </div>
+                  <div className={styles.statusRow}>
+                    <span>{dict.indexing.totalFolders}:</span>
+                    <strong className="fileSize">{indexStatus?.totalFolders?.toLocaleString() ?? 0}</strong>
+                  </div>
+                  <div className={styles.statusRow}>
+                    <span>{dict.indexing.totalSize}:</span>
+                    <strong className="fileSize">{formatBytes(indexStatus?.totalBytes ?? 0)}</strong>
+                  </div>
+                  <div className={styles.statusRow}>
+                    <span>{dict.indexing.lastScan}:</span>
+                    <span>
+                      {indexStatus?.lastScan
+                        ? formatDateTime(indexStatus.lastScan)
+                        : dict.indexing.never}
+                    </span>
+                  </div>
+                </div>
+
+                <div className={styles.indexActions}>
                   {indexStatus?.isScanning ? (
                     <button className={styles.actionBtn} onClick={onCancelIndexScan}>
-                      <Square size={14} /> Stop Scan
+                      <Square size={14} /> {dict.indexing.cancelScan}
                     </button>
                   ) : (
-                    <button className={styles.actionBtn} onClick={onStartIndexScan}>
-                      <Play size={14} /> Start Scan Now
+                    <button className={styles.actionBtnPrimary} onClick={onStartIndexScan}>
+                      <Play size={14} /> {dict.indexing.startScan}
                     </button>
                   )}
                   <button className={styles.actionBtn} onClick={onClearIndex}>
-                    <RotateCcw size={14} /> Clear Index
+                    <RotateCcw size={14} /> {dict.indexing.clearIndex}
                   </button>
                 </div>
 
                 <h4 style={{ fontSize: 12, marginTop: 18, marginBottom: 6 }}>
-                  Configured Scan Roots
+                  {dict.indexing.monitoredRoots}
                 </h4>
                 <div className={styles.rootsList}>
                   {localSettings.index.roots.length === 0 ? (
@@ -311,7 +367,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   ) : (
                     localSettings.index.roots.map((r) => (
                       <div key={r} className={styles.rootItem}>
-                        <span>{r}</span>
+                        <span className="filePath" dir="ltr">{r}</span>
                         <button
                           className={styles.removeRootBtn}
                           onClick={() => handleRemoveRoot(r)}
@@ -326,11 +382,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <div className={styles.addRootRow}>
                   <input
                     type="text"
-                    placeholder="Enter folder path (e.g. C:\Users\Username\Documents)"
+                    className="filePath"
+                    dir="ltr"
+                    placeholder="C:\Users\Username\Documents"
                     value={newRootPath}
                     onChange={(e) => setNewRootPath(e.target.value)}
                   />
-                  <button onClick={handleAddRoot}>Add Location</button>
+                  <button onClick={handleAddRoot}>{dict.common.apply}</button>
                 </div>
               </div>
             )}
@@ -383,10 +441,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
         <div className={styles.footer}>
           <button className={styles.cancelBtn} onClick={onClose}>
-            Cancel
+            {dict.common.cancel}
           </button>
           <button className={styles.saveBtn} onClick={handleSave}>
-            Save Changes
+            {dict.common.save}
           </button>
         </div>
       </div>
