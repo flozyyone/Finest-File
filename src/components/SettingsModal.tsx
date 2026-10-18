@@ -113,6 +113,62 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
 
                 <div className={styles.row}>
+                  <label>Accent Color</label>
+                  <select
+                    value={localSettings.accentColor || "blue"}
+                    onChange={(e) =>
+                      setLocalSettings({
+                        ...localSettings,
+                        accentColor: e.target.value as any,
+                      })
+                    }
+                  >
+                    <option value="blue">Windows Blue (Default)</option>
+                    <option value="teal">Nordic Teal</option>
+                    <option value="purple">Royal Purple</option>
+                    <option value="amber">Warm Amber</option>
+                    <option value="emerald">Emerald Forest</option>
+                    <option value="slate">Minimal Slate</option>
+                  </select>
+                </div>
+
+                <div className={styles.row}>
+                  <label>Font Family</label>
+                  <select
+                    value={localSettings.fontFamily || "system"}
+                    onChange={(e) =>
+                      setLocalSettings({
+                        ...localSettings,
+                        fontFamily: e.target.value as any,
+                      })
+                    }
+                  >
+                    <option value="system">System Default (Segoe UI Variable)</option>
+                    <option value="segoe">Classic Segoe UI</option>
+                    <option value="aptos">Modern Aptos</option>
+                    <option value="cascadia">Cascadia Code / Mono</option>
+                    <option value="consolas">Consolas</option>
+                  </select>
+                </div>
+
+                <div className={styles.row}>
+                  <label>Font Size / UI Density</label>
+                  <select
+                    value={localSettings.fontSize || "medium"}
+                    onChange={(e) =>
+                      setLocalSettings({
+                        ...localSettings,
+                        fontSize: e.target.value as any,
+                      })
+                    }
+                  >
+                    <option value="small">Compact (11.5px)</option>
+                    <option value="medium">Standard (13px)</option>
+                    <option value="large">Spacious (14.5px)</option>
+                  </select>
+                </div>
+
+                <div className={styles.row}>
                   <label>Default View Mode</label>
                   <select
                     value={localSettings.defaultViewMode}

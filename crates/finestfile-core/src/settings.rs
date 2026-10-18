@@ -12,6 +12,9 @@ use crate::sorting::ViewPreferences;
 #[serde(rename_all = "camelCase")]
 pub struct AppSettings {
     pub theme: String, // "system", "light", "dark"
+    pub accent_color: String, // "blue", "teal", "purple", "amber", "emerald", "slate"
+    pub font_family: String, // "system", "segoe", "cascadia", "aptos", "consolas"
+    pub font_size: String, // "small", "medium", "large"
     pub show_hidden_files: bool,
     pub show_file_extensions: bool,
     pub default_view_mode: String, // "details", "grid"
@@ -25,6 +28,9 @@ impl Default for AppSettings {
     fn default() -> Self {
         Self {
             theme: "system".into(),
+            accent_color: "blue".into(),
+            font_family: "system".into(),
+            font_size: "medium".into(),
             show_hidden_files: false,
             show_file_extensions: true,
             default_view_mode: "details".into(),

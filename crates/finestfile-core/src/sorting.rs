@@ -4,7 +4,7 @@
 //! for file entries with natural alphanumeric ordering, date ranges, size bins,
 //! file attributes, extensions, and configurable folder precedence.
 
-use crate::model::FileEntry;
+use crate::model::{FileEntry, ATTR_DIRECTORY};
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::collections::BTreeMap;

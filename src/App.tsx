@@ -38,6 +38,9 @@ export const App: React.FC = () => {
   });
   const [settings, setSettings] = useState<AppSettings>({
     theme: "system",
+    accentColor: "blue",
+    fontFamily: "system",
+    fontSize: "medium",
     showHiddenFiles: false,
     showFileExtensions: true,
     defaultViewMode: "details",
@@ -117,7 +120,7 @@ export const App: React.FC = () => {
       if (s.viewPreferences) {
         setViewPreferences(s.viewPreferences);
       }
-      applyTheme(s.theme);
+      applyTheme(s.theme, s.accentColor, s.fontFamily, s.fontSize);
     });
 
     api.listJobs().then(setJobs);
@@ -148,12 +151,27 @@ export const App: React.FC = () => {
     };
   }, []);
 
-  const applyTheme = (theme: "system" | "light" | "dark") => {
+  const applyTheme = (
+    theme: "system" | "light" | "dark",
+    accentColor?: string,
+    fontFamily?: string,
+    fontSize?: string
+  ) => {
     if (theme === "system") {
       const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
       document.documentElement.setAttribute("data-theme", prefersDark ? "dark" : "light");
     } else {
       document.documentElement.setAttribute("data-theme", theme);
+    }
+
+    if (accentColor) {
+      document.documentElement.setAttribute("data-accent", accentColor);
+    }
+    if (fontFamily) {
+      document.documentElement.setAttribute("data-font", fontFamily);
+    }
+    if (fontSize) {
+      document.documentElement.setAttribute("data-size", fontSize);
     }
   };
 
@@ -819,7 +837,12 @@ export const App: React.FC = () => {
         settings={settings}
         onSaveSettings={(newSettings) => {
           setSettings(newSettings);
-          applyTheme(newSettings.theme);
+          applyTheme(
+            newSettings.theme,
+            newSettings.accentColor,
+            newSettings.fontFamily,
+            newSettings.fontSize
+          );
           setViewMode(newSettings.defaultViewMode);
           api.updateSettings(newSettings);
         }}
