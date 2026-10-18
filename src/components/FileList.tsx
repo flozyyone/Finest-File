@@ -2,16 +2,21 @@ import React, { useState, useRef, useEffect } from "react";
 import { FileEntry, FileGroup, SortField, ViewPreferences } from "../types";
 import { FileIcon } from "./FileIcon";
 import { formatBytes } from "../utils/format";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Film } from "lucide-react";
 import { useI18n } from "../i18n";
 import { api } from "../api";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import styles from "./FileList.module.css";
 
-const THUMBNAIL_EXTS = new Set([
-  "jpg", "jpeg", "png", "webp", "bmp", "gif", "tiff", "tif", "svg",
+const VIDEO_EXTS = new Set([
   "mp4", "mkv", "mov", "webm", "avi", "wmv", "m4v", "3gp"
 ]);
+
+const IMAGE_EXTS = new Set([
+  "jpg", "jpeg", "png", "webp", "bmp", "gif", "tiff", "tif", "svg"
+]);
+
+const THUMBNAIL_EXTS = new Set([...VIDEO_EXTS, ...IMAGE_EXTS]);
 
 interface FileListProps {
   groups: FileGroup[];
@@ -32,6 +37,66 @@ interface FileListProps {
   onZoomOut?: () => void;
   onGoUp?: () => void;
   onSpacePress?: (path: string) => void;
+}
+
+function extractVideoFrame(filePath: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement("video");
+    try {
+      video.src = convertFileSrc(filePath);
+    } catch (err) {
+      reject(err);
+      return;
+    }
+    video.preload = "metadata";
+    video.muted = true;
+    video.playsInline = true;
+    video.currentTime = 0.5;
+
+    let resolved = false;
+    const cleanup = () => {
+      video.removeAttribute("src");
+      video.load();
+    };
+
+    video.onseeked = () => {
+      if (resolved) return;
+      resolved = true;
+      try {
+        const canvas = document.createElement("canvas");
+        const aspect = (video.videoWidth && video.videoHeight) ? video.videoWidth / video.videoHeight : 16 / 9;
+        canvas.width = 320;
+        canvas.height = Math.round(320 / aspect);
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+          cleanup();
+          resolve(dataUrl);
+          return;
+        }
+      } catch {
+        // ignore
+      }
+      cleanup();
+      reject(new Error("Canvas draw failed"));
+    };
+
+    video.onerror = () => {
+      if (resolved) return;
+      resolved = true;
+      cleanup();
+      reject(new Error("Video load failed"));
+    };
+
+    setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        cleanup();
+        reject(new Error("Video timeout"));
+      }
+    }, 2500);
+  });
 }
 
 export const FileList: React.FC<FileListProps> = ({
@@ -128,10 +193,12 @@ export const FileList: React.FC<FileListProps> = ({
       setThumbnails((prev) => ({ ...prev, ...newThumbs }));
     }
 
-    // For remaining items (videos, TIFF, etc.), query getFileThumbnail in batches
+    // For remaining items (videos, TIFF, etc.), query getFileThumbnail with video frame fallback
     const batch = remainingToFetch.slice(0, 32);
     for (const item of batch) {
       fetchingPathsRef.current.add(item.path);
+      const isVideo = VIDEO_EXTS.has(item.ext.toLowerCase());
+
       api
         .getFileThumbnail(
           item.path,
@@ -142,11 +209,37 @@ export const FileList: React.FC<FileListProps> = ({
           if (active && res?.dataUrl) {
             loadedPathsRef.current.add(item.path);
             setThumbnails((prev) => ({ ...prev, [item.path]: res.dataUrl }));
+          } else if (isVideo) {
+            extractVideoFrame(item.path)
+              .then((frameUrl) => {
+                if (active && frameUrl) {
+                  loadedPathsRef.current.add(item.path);
+                  setThumbnails((prev) => ({ ...prev, [item.path]: frameUrl }));
+                }
+              })
+              .catch(() => {
+                loadedPathsRef.current.add(item.path);
+              });
           }
         })
         .catch(() => {
-          fetchingPathsRef.current.delete(item.path);
-          loadedPathsRef.current.add(item.path);
+          if (isVideo) {
+            extractVideoFrame(item.path)
+              .then((frameUrl) => {
+                fetchingPathsRef.current.delete(item.path);
+                if (active && frameUrl) {
+                  loadedPathsRef.current.add(item.path);
+                  setThumbnails((prev) => ({ ...prev, [item.path]: frameUrl }));
+                }
+              })
+              .catch(() => {
+                fetchingPathsRef.current.delete(item.path);
+                loadedPathsRef.current.add(item.path);
+              });
+          } else {
+            fetchingPathsRef.current.delete(item.path);
+            loadedPathsRef.current.add(item.path);
+          }
         });
     }
 
@@ -235,6 +328,9 @@ export const FileList: React.FC<FileListProps> = ({
     const isRenaming = renamingPath === entry.path;
     const thumbUrl = thumbnails[entry.path];
     const thumbBoxHeight = Math.max(32, Math.round(gridZoom * 0.72));
+    const isVideo = entry.kind !== "directory" && VIDEO_EXTS.has(entry.ext.toLowerCase());
+    const isImage = entry.kind !== "directory" && IMAGE_EXTS.has(entry.ext.toLowerCase());
+    const filmstripWidth = Math.min(gridZoom - 6, Math.round(thumbBoxHeight * 1.38));
 
     return (
       <div
@@ -254,7 +350,45 @@ export const FileList: React.FC<FileListProps> = ({
           className={styles.gridIcon}
           style={{ width: "100%", height: `${thumbBoxHeight}px` }}
         >
-          {thumbUrl ? (
+          {isVideo ? (
+            <div
+              className={styles.videoFilmstrip}
+              style={{
+                width: `${filmstripWidth}px`,
+                maxWidth: "100%",
+                height: `${thumbBoxHeight}px`,
+              }}
+            >
+              <div className={styles.sprocketColumn}>
+                <div className={styles.sprocketHole} />
+                <div className={styles.sprocketHole} />
+                <div className={styles.sprocketHole} />
+                <div className={styles.sprocketHole} />
+              </div>
+
+              <div className={styles.videoPosterBox}>
+                {thumbUrl ? (
+                  <img
+                    src={thumbUrl}
+                    alt={entry.name}
+                    className={styles.videoPosterImg}
+                  />
+                ) : (
+                  <Film size={Math.max(16, Math.round(iconSize * 0.5))} color="#8a8a8a" />
+                )}
+                <div className={styles.videoBadge} title="Video">
+                  <Film size={10} color="#ffffff" />
+                </div>
+              </div>
+
+              <div className={styles.sprocketColumn}>
+                <div className={styles.sprocketHole} />
+                <div className={styles.sprocketHole} />
+                <div className={styles.sprocketHole} />
+                <div className={styles.sprocketHole} />
+              </div>
+            </div>
+          ) : isImage && thumbUrl ? (
             <img
               src={thumbUrl}
               alt={entry.name}
@@ -370,6 +504,14 @@ export const FileList: React.FC<FileListProps> = ({
       tabIndex={0}
       onKeyDown={handleKeyDown}
       onContextMenu={(e) => onContextMenu(e)}
+      onWheel={(e) => {
+        if (e.ctrlKey) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (e.deltaY < 0) onZoomIn?.();
+          else if (e.deltaY > 0) onZoomOut?.();
+        }
+      }}
     >
       {/* Details View Header */}
       {viewMode === "details" && (

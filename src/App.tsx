@@ -184,10 +184,9 @@ export const App: React.FC = () => {
     });
   }, []);
 
-  // Globally intercept Ctrl + Mouse Wheel for pixel-based zoom across the file view
+  // Globally intercept Ctrl + Mouse Wheel for instant pixel-based zoom across the file view
   useEffect(() => {
-    let wheelAcc = 0;
-    let wheelTimer: ReturnType<typeof setTimeout> | null = null;
+    let lastWheelTime = 0;
 
     const handleGlobalWheel = (e: WheelEvent) => {
       if (e.ctrlKey) {
@@ -195,27 +194,25 @@ export const App: React.FC = () => {
         e.preventDefault();
         e.stopPropagation();
 
-        wheelAcc += e.deltaY;
-        if (wheelTimer) clearTimeout(wheelTimer);
-        wheelTimer = setTimeout(() => {
-          wheelAcc = 0;
-        }, 150);
+        const now = Date.now();
+        // 50ms throttle prevents runaway zoom from free-spinning inertia wheels while triggering instantly on every single notch
+        if (now - lastWheelTime < 50) return;
+        lastWheelTime = now;
 
-        const stepThreshold = 18;
-        if (wheelAcc <= -stepThreshold) {
+        if (e.deltaY < 0) {
           handleZoomIn();
-          wheelAcc = 0;
-        } else if (wheelAcc >= stepThreshold) {
+        } else if (e.deltaY > 0) {
           handleZoomOut();
-          wheelAcc = 0;
         }
       }
     };
 
-    window.addEventListener("wheel", handleGlobalWheel, { passive: false });
+    window.addEventListener("wheel", handleGlobalWheel, { passive: false, capture: true });
+    document.addEventListener("wheel", handleGlobalWheel, { passive: false, capture: true });
+
     return () => {
-      window.removeEventListener("wheel", handleGlobalWheel);
-      if (wheelTimer) clearTimeout(wheelTimer);
+      window.removeEventListener("wheel", handleGlobalWheel, { capture: true });
+      document.removeEventListener("wheel", handleGlobalWheel, { capture: true });
     };
   }, [handleZoomIn, handleZoomOut]);
 

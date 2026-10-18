@@ -241,10 +241,81 @@
   height: auto;
   object-fit: contain;
   border-radius: var(--radius-sm);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
   user-select: none;
   -webkit-user-drag: none;
   pointer-events: none;
+}
+
+/* Windows Explorer Filmstrip Video Frame */
+.videoFilmstrip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #121417;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-sizing: border-box;
+}
+
+.sprocketColumn {
+  width: 11px;
+  height: 100%;
+  background-color: #0c0e10;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  align-items: center;
+  flex-shrink: 0;
+  z-index: 2;
+  padding: 2px 0;
+}
+
+.sprocketHole {
+  width: 5px;
+  height: 7px;
+  background-color: #ffffff;
+  border-radius: 1.5px;
+  opacity: 0.95;
+}
+
+.videoPosterBox {
+  position: relative;
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #000;
+  overflow: hidden;
+}
+
+.videoPosterImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
+.videoBadge {
+  position: absolute;
+  bottom: 3px;
+  right: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  background: linear-gradient(135deg, #1f1b2e 0%, #3e265c 100%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.7);
+  z-index: 3;
 }
 
 .gridLabel {

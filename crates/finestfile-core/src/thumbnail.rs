@@ -261,17 +261,24 @@ fn generate_shell_thumbnail_bytes(
         data4: [0x80, 0xc4, 0x8a, 0x14, 0x0d, 0xf4, 0xd1, 0x4c],
     };
 
-    // Flags: SIIGBF_BIGGERSIZEOK = 0x01
+    // Flags: SIIGBF_RESIZETOFIT = 0x00, SIIGBF_BIGGERSIZEOK = 0x01
+    const SIIGBF_RESIZETOFIT: u32 = 0x00;
     const SIIGBF_BIGGERSIZEOK: u32 = 0x01;
 
-    let path_wide: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
+    // Normalize forward slashes to standard Windows backslashes
+    let path_str = path.to_string_lossy().replace('/', "\\");
+    let path_wide: Vec<u16> = std::ffi::OsStr::new(&path_str)
+        .encode_wide()
+        .chain(Some(0))
+        .collect();
 
     unsafe {
         // Initialize COM for this thread if not already initialized
-        let _ = CoInitializeEx(
+        let hr_init = CoInitializeEx(
             std::ptr::null_mut(),
             (COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE) as u32,
         );
+        let need_uninit = hr_init == S_OK || hr_init == 1; // S_OK or S_FALSE
 
         let mut factory_ptr: *mut c_void = std::ptr::null_mut();
         let hr: HRESULT = SHCreateItemFromParsingName(
@@ -282,8 +289,10 @@ fn generate_shell_thumbnail_bytes(
         );
 
         if hr != S_OK || factory_ptr.is_null() {
-            CoUninitialize();
-            return Err(format!("Shell item could not be created (HRESULT 0x{:08x})", hr));
+            if need_uninit {
+                CoUninitialize();
+            }
+            return Err(format!("Shell item could not be created for {:?} (HRESULT 0x{:08x})", path_str, hr));
         }
 
         // IShellItemImageFactory vtable:
@@ -307,11 +316,17 @@ fn generate_shell_thumbnail_bytes(
         };
         let mut hbitmap: HBITMAP = std::ptr::null_mut();
 
-        let hr_image = get_image(factory_ptr, size, SIIGBF_BIGGERSIZEOK, &mut hbitmap);
+        let mut hr_image = get_image(factory_ptr, size, SIIGBF_BIGGERSIZEOK, &mut hbitmap);
+        if hr_image != S_OK || hbitmap.is_null() {
+            // Retry with RESIZETOFIT
+            hr_image = get_image(factory_ptr, size, SIIGBF_RESIZETOFIT, &mut hbitmap);
+        }
         release(factory_ptr);
 
         if hr_image != S_OK || hbitmap.is_null() {
-            CoUninitialize();
+            if need_uninit {
+                CoUninitialize();
+            }
             return Err(format!("Shell GetImage failed (HRESULT 0x{:08x})", hr_image));
         }
 
@@ -319,7 +334,9 @@ fn generate_shell_thumbnail_bytes(
         let hdc = GetDC(std::ptr::null_mut());
         if hdc.is_null() {
             DeleteObject(hbitmap);
-            CoUninitialize();
+            if need_uninit {
+                CoUninitialize();
+            }
             return Err("Failed to get DC".to_string());
         }
 
@@ -362,7 +379,9 @@ fn generate_shell_thumbnail_bytes(
         if actual_width == 0 || actual_height == 0 {
             ReleaseDC(std::ptr::null_mut(), hdc);
             DeleteObject(hbitmap);
-            CoUninitialize();
+            if need_uninit {
+                CoUninitialize();
+            }
             return Err("Zero dimension shell bitmap".to_string());
         }
 
@@ -385,7 +404,9 @@ fn generate_shell_thumbnail_bytes(
 
         ReleaseDC(std::ptr::null_mut(), hdc);
         DeleteObject(hbitmap);
-        CoUninitialize();
+        if need_uninit {
+            CoUninitialize();
+        }
 
         if scanlines == 0 {
             return Err("GetDIBits failed to extract scanlines".to_string());
