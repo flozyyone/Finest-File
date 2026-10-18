@@ -76,6 +76,11 @@ export const ur: TranslationDictionary = {
     none: "(کوئی نہیں)",
     itemsCount: "{count} آئٹمز",
     selectedCount: "{count} منتخب",
+    previewPane: "پیش نظارہ پینل",
+    fitToWindow: "کھڑکی کے مطابق فٹ کریں",
+    actualSize: "اصل سائز (100%)",
+    dimensions: "ابعاد",
+    noPreview: "کوئی پیش نظارہ دستیاب نہیں",
   },
   dateGroups: {
     today: "آج",

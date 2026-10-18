@@ -76,6 +76,11 @@ export const ru: TranslationDictionary = {
     none: "(Нет)",
     itemsCount: "Элементов: {count}",
     selectedCount: "Выбрано: {count}",
+    previewPane: "Панель предварительного просмотра",
+    fitToWindow: "По размеру окна",
+    actualSize: "Реальный размер (100%)",
+    dimensions: "Разрешение",
+    noPreview: "Предварительный просмотр недоступен",
   },
   dateGroups: {
     today: "Сегодня",

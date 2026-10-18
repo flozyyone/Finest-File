@@ -40,7 +40,15 @@ pub struct AppSettings {
     pub view_preferences: ViewPreferences,
     #[serde(default)]
     pub custom_shortcuts: std::collections::HashMap<String, String>,
+    #[serde(default = "default_grid_pixel_size")]
+    pub grid_pixel_size: u32,
+    #[serde(default)]
+    pub preview_pane_open: bool,
     pub index: IndexSettings,
+}
+
+fn default_grid_pixel_size() -> u32 {
+    96
 }
 
 impl Default for AppSettings {
@@ -58,6 +66,8 @@ impl Default for AppSettings {
             confirm_delete: true,
             view_preferences: ViewPreferences::default(),
             custom_shortcuts: std::collections::HashMap::new(),
+            grid_pixel_size: 96,
+            preview_pane_open: false,
             index: IndexSettings::default(),
         }
     }

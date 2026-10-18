@@ -14,6 +14,7 @@ import {
   RotateCcw,
   Minus,
   Plus,
+  PanelRight,
 } from "lucide-react";
 import { useI18n } from "../i18n";
 import styles from "./ViewToolbar.module.css";
@@ -29,6 +30,8 @@ interface ViewToolbarProps {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onZoomReset: () => void;
+  previewPaneOpen: boolean;
+  onTogglePreviewPane: () => void;
 }
 
 export const ViewToolbar: React.FC<ViewToolbarProps> = ({
@@ -42,6 +45,8 @@ export const ViewToolbar: React.FC<ViewToolbarProps> = ({
   onZoomIn,
   onZoomOut,
   onZoomReset,
+  previewPaneOpen,
+  onTogglePreviewPane,
 }) => {
   const { dict } = useI18n();
   const [sortOpen, setSortOpen] = useState(false);
@@ -283,7 +288,7 @@ export const ViewToolbar: React.FC<ViewToolbarProps> = ({
         <button
           className={styles.zoomBtn}
           onClick={onZoomOut}
-          disabled={zoom <= 48}
+          disabled={zoom <= 32}
           title={dict.view.zoomOut}
           aria-label={dict.view.zoomOut}
         >
@@ -293,19 +298,19 @@ export const ViewToolbar: React.FC<ViewToolbarProps> = ({
         <input
           type="range"
           className={styles.zoomSlider}
-          min={48}
-          max={256}
+          min={32}
+          max={320}
           step={8}
           value={zoom}
           onChange={(e) => onZoomChange(Number(e.target.value))}
-          title={`${zoom}px`}
+          title={`${zoom} px`}
           aria-label={dict.view.view}
         />
 
         <button
           className={styles.zoomBtn}
           onClick={onZoomIn}
-          disabled={zoom >= 256}
+          disabled={zoom >= 320}
           title={dict.view.zoomIn}
           aria-label={dict.view.zoomIn}
         >
@@ -317,9 +322,21 @@ export const ViewToolbar: React.FC<ViewToolbarProps> = ({
           onClick={onZoomReset}
           title={dict.view.resetZoom}
         >
-          {zoom}px
+          {zoom} px
         </button>
       </div>
+
+      <div className={styles.divider} />
+
+      {/* Preview Pane Toggle Button */}
+      <button
+        className={`${styles.toolBtn} ${previewPaneOpen ? styles.active : ""}`}
+        onClick={onTogglePreviewPane}
+        title={`${dict.view.previewPane} (Alt + P)`}
+      >
+        <PanelRight size={15} />
+        <span>{dict.view.previewPane}</span>
+      </button>
 
       <div className={styles.divider} />
 

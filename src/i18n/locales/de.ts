@@ -76,6 +76,11 @@ export const de: TranslationDictionary = {
     none: "(Keine)",
     itemsCount: "{count} Elemente",
     selectedCount: "{count} ausgewählt",
+    previewPane: "Vorschaufenster",
+    fitToWindow: "An Fenster anpassen",
+    actualSize: "Tatsächliche Größe (100 %)",
+    dimensions: "Abmessungen",
+    noPreview: "Keine Vorschau verfügbar",
   },
   dateGroups: {
     today: "Heute",

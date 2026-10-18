@@ -1,0 +1,245 @@
+.previewPane {
+  width: 320px;
+  background-color: var(--bg-surface);
+  border-left: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  height: 100%;
+  overflow: hidden;
+  user-select: none;
+  z-index: 10;
+}
+
+:global([dir="rtl"]) .previewPane {
+  border-left: none;
+  border-right: 1px solid var(--border-subtle);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  height: 38px;
+  flex-shrink: 0;
+}
+
+.headerTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-main);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.closeBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.closeBtn:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-main);
+}
+
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px;
+  gap: 12px;
+}
+
+.mediaViewport {
+  position: relative;
+  width: 100%;
+  height: 240px;
+  background-color: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.mediaViewport.panning {
+  cursor: grab;
+}
+
+.mediaViewport.panning:active {
+  cursor: grabbing;
+}
+
+.imagePreview {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  transition: transform 0.15s ease-out;
+  transform-origin: center center;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.videoContainer {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.videoElement {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background-color: #000;
+  border-radius: var(--radius-md);
+}
+
+.videoOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: background-color 0.2s ease;
+}
+
+.videoOverlay:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.playBtnCircle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-color: var(--accent);
+  color: var(--accent-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s ease;
+}
+
+.videoOverlay:hover .playBtnCircle {
+  transform: scale(1.08);
+}
+
+.previewToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background-color: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  align-self: center;
+}
+
+.previewToolBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.previewToolBtn:hover:not(:disabled) {
+  background-color: var(--bg-hover);
+  color: var(--text-main);
+}
+
+.previewToolBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.previewToolBtn.active {
+  background-color: var(--bg-surface);
+  color: var(--accent);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.zoomLevelText {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  min-width: 36px;
+  text-align: center;
+}
+
+.metaSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background-color: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+}
+
+.metaRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  font-size: 11.5px;
+  gap: 8px;
+}
+
+.metaLabel {
+  color: var(--text-muted);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.metaValue {
+  color: var(--text-main);
+  text-align: right;
+  word-break: break-all;
+}
+
+.emptyPreview {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-subtle);
+  font-size: 12px;
+  padding: 24px;
+  text-align: center;
+}

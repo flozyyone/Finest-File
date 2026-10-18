@@ -280,3 +280,33 @@ pub fn group_and_sort_files(
 
     sorting::group_and_sort_entries(&entries, &prefs, now_ms)
 }
+
+#[tauri::command]
+pub fn get_file_thumbnail(
+    state: State<'_, AppState>,
+    path: String,
+    max_dimension: Option<u32>,
+) -> Result<finestfile_core::thumbnail::ThumbnailResult, String> {
+    let p = PathBuf::from(&path);
+    let cache_dir = state
+        .settings_path
+        .parent()
+        .map(|d| d.join("cache").join("thumbnails"))
+        .unwrap_or_else(|| PathBuf::from("cache").join("thumbnails"));
+    let dim = max_dimension.unwrap_or(128);
+    finestfile_core::thumbnail::get_thumbnail(&p, dim, &cache_dir)
+}
+
+#[tauri::command]
+pub fn get_media_preview(
+    state: State<'_, AppState>,
+    path: String,
+) -> Result<finestfile_core::thumbnail::MediaPreviewInfo, String> {
+    let p = PathBuf::from(&path);
+    let cache_dir = state
+        .settings_path
+        .parent()
+        .map(|d| d.join("cache").join("thumbnails"))
+        .unwrap_or_else(|| PathBuf::from("cache").join("thumbnails"));
+    finestfile_core::thumbnail::get_preview_info(&p, &cache_dir)
+}

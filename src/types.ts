@@ -163,6 +163,25 @@ export type FontSizeOption = "small" | "medium" | "large";
 
 import type { SupportedLanguage } from "./i18n/types";
 
+export interface ThumbnailResult {
+  dataUrl: string;
+  width: number;
+  height: number;
+  mimeType: string;
+}
+
+export interface MediaPreviewInfo {
+  path: string;
+  fileName: string;
+  sizeBytes: number;
+  mimeType: string;
+  mediaType: "image" | "video" | "audio" | "other";
+  width?: number;
+  height?: number;
+  durationSecs?: number;
+  thumbnailUrl?: string;
+}
+
 export interface AppSettings {
   theme: "system" | "light" | "dark";
   accentColor: AccentColor;
@@ -176,5 +195,7 @@ export interface AppSettings {
   confirmDelete: boolean;
   viewPreferences: ViewPreferences;
   customShortcuts?: Record<string, string>;
+  gridPixelSize?: number;
+  previewPaneOpen?: boolean;
   index: IndexSettings;
 }

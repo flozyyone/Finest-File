@@ -160,6 +160,8 @@ fn main() {
             commands::get_settings,
             commands::update_settings,
             commands::group_and_sort_files,
+            commands::get_file_thumbnail,
+            commands::get_media_preview,
         ])
         .run(tauri::generate_context!())
         .expect("error while running FinestFile desktop application");

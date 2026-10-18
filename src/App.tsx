@@ -19,6 +19,7 @@ import { ContextMenu } from "./components/ContextMenu";
 import { JobsPanel } from "./components/JobsPanel";
 import { SettingsModal } from "./components/SettingsModal";
 import { ShortcutModal } from "./components/ShortcutModal";
+import { PreviewPane } from "./components/PreviewPane";
 import { isInputFocused, matchesShortcutId } from "./shortcuts/registry";
 import { undoStack } from "./utils/undoStack";
 import { I18nProvider, detectInitialLanguage, getLanguageInfo, getDictionary } from "./i18n";
@@ -105,26 +106,66 @@ export const App: React.FC = () => {
   const [focusSearchTrigger, setFocusSearchTrigger] = useState(0);
   const [isShortcutModalOpen, setIsShortcutModalOpen] = useState(false);
   const [gridZoom, setGridZoom] = useState(96);
+  const [previewPaneOpen, setPreviewPaneOpen] = useState(false);
 
-  const MIN_ZOOM = 48;
-  const MAX_ZOOM = 256;
+  const MIN_ZOOM = 32;
+  const MAX_ZOOM = 320;
   const DEFAULT_ZOOM = 96;
   const ZOOM_STEP = 16;
 
   const handleZoomIn = useCallback(() => {
-    setGridZoom((z) => Math.min(MAX_ZOOM, z + ZOOM_STEP));
+    setGridZoom((z) => {
+      const clamped = Math.min(MAX_ZOOM, z + ZOOM_STEP);
+      setSettings((s) => {
+        const newSettings = { ...s, gridPixelSize: clamped };
+        api.updateSettings(newSettings).catch(console.error);
+        return newSettings;
+      });
+      return clamped;
+    });
   }, []);
 
   const handleZoomOut = useCallback(() => {
-    setGridZoom((z) => Math.max(MIN_ZOOM, z - ZOOM_STEP));
+    setGridZoom((z) => {
+      const clamped = Math.max(MIN_ZOOM, z - ZOOM_STEP);
+      setSettings((s) => {
+        const newSettings = { ...s, gridPixelSize: clamped };
+        api.updateSettings(newSettings).catch(console.error);
+        return newSettings;
+      });
+      return clamped;
+    });
   }, []);
 
   const handleZoomReset = useCallback(() => {
     setGridZoom(DEFAULT_ZOOM);
+    setSettings((s) => {
+      const newSettings = { ...s, gridPixelSize: DEFAULT_ZOOM };
+      api.updateSettings(newSettings).catch(console.error);
+      return newSettings;
+    });
   }, []);
 
   const handleZoomChange = useCallback((newZoom: number) => {
-    setGridZoom(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newZoom)));
+    const clamped = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newZoom));
+    setGridZoom(clamped);
+    setSettings((s) => {
+      const newSettings = { ...s, gridPixelSize: clamped };
+      api.updateSettings(newSettings).catch(console.error);
+      return newSettings;
+    });
+  }, []);
+
+  const togglePreviewPane = useCallback(() => {
+    setPreviewPaneOpen((open) => {
+      const updated = !open;
+      setSettings((s) => {
+        const newSettings = { ...s, previewPaneOpen: updated };
+        api.updateSettings(newSettings).catch(console.error);
+        return newSettings;
+      });
+      return updated;
+    });
   }, []);
 
   // Prevent browser/webview whole-window zoom when Ctrl is held
@@ -160,6 +201,8 @@ export const App: React.FC = () => {
       if (updated.viewPreferences) {
         setViewPreferences(updated.viewPreferences);
       }
+      if (s.gridPixelSize) setGridZoom(s.gridPixelSize);
+      if (s.previewPaneOpen !== undefined) setPreviewPaneOpen(s.previewPaneOpen);
       applyTheme(updated.theme, updated.accentColor, updated.fontFamily, updated.fontSize, lang);
     });
 
@@ -580,6 +623,9 @@ export const App: React.FC = () => {
       } else if (isTriggered("view.zoom_reset")) {
         e.preventDefault();
         handleZoomReset();
+      } else if (isTriggered("view.toggle_preview_pane")) {
+        e.preventDefault();
+        togglePreviewPane();
       }
     };
 
@@ -796,34 +842,45 @@ export const App: React.FC = () => {
             onZoomIn={handleZoomIn}
             onZoomOut={handleZoomOut}
             onZoomReset={handleZoomReset}
+            previewPaneOpen={previewPaneOpen}
+            onTogglePreviewPane={togglePreviewPane}
           />
 
-          <FileList
-            groups={groupedFiles}
-            viewMode={viewMode}
-            prefs={viewPreferences}
-            onSortChange={handleSortChange}
-            selectedPaths={selectedPaths}
-            onSelect={handleSelect}
-            onOpen={handleOpen}
-            onContextMenu={(e, entry) => {
-              e.preventDefault();
-              setContextMenu({
-                x: e.clientX,
-                y: e.clientY,
-                selected: entry ? [entry] : [],
-              });
-            }}
-            renamingPath={renamingPath}
-            onRenameSubmit={handleRenameSubmit}
-            onRenameCancel={() => setRenamingPath(null)}
-            showExtensions={settings.showFileExtensions}
-            showHidden={settings.showHiddenFiles}
-            gridZoom={gridZoom}
-            onZoomIn={handleZoomIn}
-            onZoomOut={handleZoomOut}
-            onGoUp={navigateUp}
-          />
+          <div className={styles.contentArea}>
+            <FileList
+              groups={groupedFiles}
+              viewMode={viewMode}
+              prefs={viewPreferences}
+              onSortChange={handleSortChange}
+              selectedPaths={selectedPaths}
+              onSelect={handleSelect}
+              onOpen={handleOpen}
+              onContextMenu={(e, entry) => {
+                e.preventDefault();
+                setContextMenu({
+                  x: e.clientX,
+                  y: e.clientY,
+                  selected: entry ? [entry] : [],
+                });
+              }}
+              renamingPath={renamingPath}
+              onRenameSubmit={handleRenameSubmit}
+              onRenameCancel={() => setRenamingPath(null)}
+              showExtensions={settings.showFileExtensions}
+              showHidden={settings.showHiddenFiles}
+              gridZoom={gridZoom}
+              onZoomIn={handleZoomIn}
+              onZoomOut={handleZoomOut}
+              onGoUp={navigateUp}
+            />
+
+            {previewPaneOpen && (
+              <PreviewPane
+                selectedEntry={entries.find((e) => selectedPaths.includes(e.path)) || null}
+                onClose={() => setPreviewPaneOpen(false)}
+              />
+            )}
+          </div>
 
           <div className={styles.statusBar}>
             <span>{currentDict.view.itemsCount.replace("{count}", String(entries.length))}</span>

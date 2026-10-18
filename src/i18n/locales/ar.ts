@@ -76,6 +76,11 @@ export const ar: TranslationDictionary = {
     none: "(بلا)",
     itemsCount: "{count} عنصر",
     selectedCount: "تم تحديد {count}",
+    previewPane: "لوحة المعاينة",
+    fitToWindow: "ملاءمة النافذة",
+    actualSize: "الحجم الفعلي (100%)",
+    dimensions: "الأبعاد",
+    noPreview: "لا توجد معاينة متاحة",
   },
   dateGroups: {
     today: "اليوم",

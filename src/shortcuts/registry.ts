@@ -470,6 +470,16 @@ export const SHORTCUT_REGISTRY: ShortcutDefinition[] = [
     preventInInput: true,
   },
   {
+    id: "view.toggle_preview_pane",
+    category: "view",
+    keys: ["Alt", "p"],
+    displayKeys: "Alt + P",
+    description: "Show or hide the preview pane",
+    explorerBehavior: "Toggles the File Explorer preview pane",
+    finestFileSupport: "full",
+    preventInInput: true,
+  },
+  {
     id: "tabs.new",
     category: "tabs",
     keys: ["Ctrl", "t"],

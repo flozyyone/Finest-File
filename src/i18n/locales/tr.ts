@@ -76,6 +76,11 @@ export const tr: TranslationDictionary = {
     none: "(Hiçbiri)",
     itemsCount: "{count} öğe",
     selectedCount: "{count} öğe seçildi",
+    previewPane: "Önizleme Bölmesi",
+    fitToWindow: "Pencereye Sığdır",
+    actualSize: "Gerçek Boyut (%100)",
+    dimensions: "Boyutlar",
+    noPreview: "Önizleme yok",
   },
   dateGroups: {
     today: "Bugün",

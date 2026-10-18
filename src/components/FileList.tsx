@@ -4,7 +4,13 @@ import { FileIcon } from "./FileIcon";
 import { formatBytes } from "../utils/format";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useI18n } from "../i18n";
+import { api } from "../api";
 import styles from "./FileList.module.css";
+
+const THUMBNAIL_EXTS = new Set([
+  "jpg", "jpeg", "png", "webp", "bmp", "gif", "tiff", "tif", "svg",
+  "mp4", "mkv", "mov", "webm", "avi", "wmv", "m4v", "3gp"
+]);
 
 interface FileListProps {
   groups: FileGroup[];
@@ -47,6 +53,7 @@ export const FileList: React.FC<FileListProps> = ({
 }) => {
   const { dict, formatDateTime, dir } = useI18n();
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
   const containerRef = useRef<HTMLDivElement>(null);
 
   const toggleGroup = (key: string) => {
@@ -77,6 +84,43 @@ export const FileList: React.FC<FileListProps> = ({
       containerRef.current.focus();
     }
   }, [selectedPaths]);
+
+  // Lazy thumbnail loader for visible media items in grid view
+  useEffect(() => {
+    if (viewMode !== "grid") return;
+
+    let active = true;
+    const itemsToFetch = allItems.filter(
+      (item) =>
+        item.kind !== "directory" &&
+        THUMBNAIL_EXTS.has(item.ext.toLowerCase()) &&
+        !thumbnails[item.path]
+    );
+
+    if (itemsToFetch.length === 0) return;
+
+    // Fetch batch with bounded concurrency
+    const batch = itemsToFetch.slice(0, 48);
+    for (const item of batch) {
+      api
+        .getFileThumbnail(
+          item.path,
+          Math.min(320, Math.max(96, Math.round(gridZoom * 1.5)))
+        )
+        .then((res) => {
+          if (active && res?.dataUrl) {
+            setThumbnails((prev) => ({ ...prev, [item.path]: res.dataUrl }));
+          }
+        })
+        .catch(() => {
+          // Fallback cleanly to generic icon
+        });
+    }
+
+    return () => {
+      active = false;
+    };
+  }, [allItems, viewMode, gridZoom, thumbnails]);
 
   const handleRowClick = (e: React.MouseEvent, entry: FileEntry) => {
     e.stopPropagation();
@@ -191,11 +235,14 @@ export const FileList: React.FC<FileListProps> = ({
   const renderGridItem = (entry: FileEntry) => {
     const isSelected = selectedPaths.includes(entry.path);
     const isRenaming = renamingPath === entry.path;
+    const thumbUrl = thumbnails[entry.path];
+    const thumbBoxHeight = Math.max(32, Math.round(gridZoom * 0.72));
 
     return (
       <div
         key={entry.path}
         className={`${styles.gridItem} ${isSelected ? styles.selected : ""}`}
+        style={{ height: `${gridZoom + 26}px` }}
         onClick={(e) => handleRowClick(e, entry)}
         onDoubleClick={() => onOpen(entry)}
         onContextMenu={(e) => {
@@ -205,8 +252,20 @@ export const FileList: React.FC<FileListProps> = ({
         }}
         title={entry.name}
       >
-        <div className={styles.gridIcon}>
-          <FileIcon kind={entry.kind} ext={entry.ext} size={iconSize} />
+        <div
+          className={styles.gridIcon}
+          style={{ width: `${gridZoom - 12}px`, height: `${thumbBoxHeight}px` }}
+        >
+          {thumbUrl ? (
+            <img
+              src={thumbUrl}
+              alt={entry.name}
+              className={styles.thumbnailImg}
+              loading="lazy"
+            />
+          ) : (
+            <FileIcon kind={entry.kind} ext={entry.ext} size={iconSize} />
+          )}
         </div>
 
         {isRenaming ? (
@@ -411,7 +470,7 @@ export const FileList: React.FC<FileListProps> = ({
                       className={styles.gridSubContainer}
                       style={{
                         gridTemplateColumns: `repeat(auto-fill, minmax(${gridZoom}px, 1fr))`,
-                        gridAutoRows: `${gridZoom}px`,
+                        gridAutoRows: `${gridZoom + 30}px`,
                       }}
                     >
                       {group.items.map((entry) => renderGridItem(entry))}

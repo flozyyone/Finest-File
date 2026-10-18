@@ -85,6 +85,11 @@ export interface TranslationDictionary {
     none: string;
     itemsCount: string; // e.g. "{count} items"
     selectedCount: string; // e.g. "{count} items selected"
+    previewPane: string;
+    fitToWindow: string;
+    actualSize: string;
+    dimensions: string;
+    noPreview: string;
   };
   dateGroups: {
     today: string;

@@ -21,6 +21,14 @@
   background-color: var(--bg-surface);
 }
 
+.contentArea {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
 .statusBar {
   height: 24px;
   background-color: var(--bg-app);

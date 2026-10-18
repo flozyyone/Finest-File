@@ -17,6 +17,7 @@ pub mod settings;
 pub mod sorting;
 pub mod transfer;
 pub mod window_state;
+pub mod thumbnail;
 
 pub mod index;
 

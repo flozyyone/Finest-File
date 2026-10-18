@@ -12,6 +12,8 @@ import {
   AppSettings,
   ViewPreferences,
   FileGroup,
+  ThumbnailResult,
+  MediaPreviewInfo,
 } from "./types";
 
 export const api = {
@@ -83,6 +85,12 @@ export const api = {
 
   groupAndSortFiles: (entries: FileEntry[], prefs: ViewPreferences) =>
     invoke<FileGroup[]>("group_and_sort_files", { entries, prefs }),
+
+  getFileThumbnail: (path: string, maxDimension?: number) =>
+    invoke<ThumbnailResult>("get_file_thumbnail", { path, maxDimension }),
+
+  getMediaPreview: (path: string) =>
+    invoke<MediaPreviewInfo>("get_media_preview", { path }),
 
   onJobProgress: (cb: (progress: JobProgress) => void): Promise<UnlistenFn> => {
     return listen<JobProgress>("job-progress", (event) => cb(event.payload));
