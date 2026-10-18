@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::sorting::ViewPreferences;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AppSettings {
@@ -15,6 +17,7 @@ pub struct AppSettings {
     pub default_view_mode: String, // "details", "grid"
     pub dual_pane_enabled: bool,
     pub confirm_delete: bool,
+    pub view_preferences: ViewPreferences,
     pub index: IndexSettings,
 }
 
@@ -27,6 +30,7 @@ impl Default for AppSettings {
             default_view_mode: "details".into(),
             dual_pane_enabled: false,
             confirm_delete: true,
+            view_preferences: ViewPreferences::default(),
             index: IndexSettings::default(),
         }
     }

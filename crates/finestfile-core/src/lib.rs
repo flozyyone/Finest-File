@@ -14,6 +14,7 @@ pub mod ops;
 pub mod platform;
 pub mod search;
 pub mod settings;
+pub mod sorting;
 pub mod transfer;
 
 pub mod index;

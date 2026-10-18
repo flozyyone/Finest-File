@@ -1,7 +1,11 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { api } from "./api";
+import { ViewToolbar } from "./components/ViewToolbar";
 import {
   FileEntry,
+  FileGroup,
+  SortField,
+  ViewPreferences,
   SystemInfo,
   AppSettings,
   JobProgress,
@@ -16,6 +20,14 @@ import { JobsPanel } from "./components/JobsPanel";
 import { SettingsModal } from "./components/SettingsModal";
 import styles from "./App.module.css";
 
+const defaultViewPreferences: ViewPreferences = {
+  sortField: "name",
+  sortDirection: "ascending",
+  groupMode: "none",
+  groupDirection: "ascending",
+  foldersFirst: true,
+};
+
 export const App: React.FC = () => {
   const [systemInfo, setSystemInfo] = useState<SystemInfo>({
     drives: [],
@@ -28,6 +40,7 @@ export const App: React.FC = () => {
     defaultViewMode: "details",
     dualPaneEnabled: false,
     confirmDelete: true,
+    viewPreferences: defaultViewPreferences,
     index: {
       enabled: false,
       roots: [],
@@ -51,11 +64,11 @@ export const App: React.FC = () => {
 
   // Directory listing & entries
   const [entries, setEntries] = useState<FileEntry[]>([]);
+  const [groupedFiles, setGroupedFiles] = useState<FileGroup[]>([]);
+  const [viewPreferences, setViewPreferences] = useState<ViewPreferences>(defaultViewPreferences);
   const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<"name" | "size" | "type" | "modified">("name");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [viewMode, setViewMode] = useState<"details" | "grid">("details");
 
   // Clipboard for cut/copy
@@ -92,6 +105,9 @@ export const App: React.FC = () => {
     api.getSettings().then((s) => {
       setSettings(s);
       setViewMode(s.defaultViewMode);
+      if (s.viewPreferences) {
+        setViewPreferences(s.viewPreferences);
+      }
       applyTheme(s.theme);
     });
 
@@ -164,6 +180,57 @@ export const App: React.FC = () => {
       }
     }
   }, [activeTab?.path, searchQuery, loadDirectory, settings.index.enabled]);
+
+  // Group and sort files whenever entries or view preferences change
+  useEffect(() => {
+    if (entries.length === 0) {
+      setGroupedFiles([]);
+      return;
+    }
+    let active = true;
+    api
+      .groupAndSortFiles(entries, viewPreferences)
+      .then((res) => {
+        if (active) {
+          setGroupedFiles(res);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to group and sort files:", err);
+      });
+    return () => {
+      active = false;
+    };
+  }, [entries, viewPreferences]);
+
+  const handlePrefsChange = (newPrefs: ViewPreferences) => {
+    setViewPreferences(newPrefs);
+    setSettings((prev) => {
+      const updated: AppSettings = { ...prev, viewPreferences: newPrefs };
+      api.updateSettings(updated).catch(console.error);
+      return updated;
+    });
+  };
+
+  const handleResetView = () => {
+    handlePrefsChange(defaultViewPreferences);
+  };
+
+  const handleSortChange = (field: SortField) => {
+    if (viewPreferences.sortField === field) {
+      handlePrefsChange({
+        ...viewPreferences,
+        sortDirection:
+          viewPreferences.sortDirection === "ascending" ? "descending" : "ascending",
+      });
+    } else {
+      handlePrefsChange({
+        ...viewPreferences,
+        sortField: field,
+        sortDirection: "ascending",
+      });
+    }
+  };
 
   const updateCurrentTabPath = (newPath: string, title?: string) => {
     const parts = newPath.split(/[/\\]+/).filter(Boolean);
@@ -428,9 +495,24 @@ export const App: React.FC = () => {
         />
 
         <main className={styles.viewArea}>
-          <FileList
-            entries={entries}
+          <ViewToolbar
             viewMode={viewMode}
+            onViewModeChange={(m) => {
+              setViewMode(m);
+              const newSettings: AppSettings = { ...settings, defaultViewMode: m };
+              setSettings(newSettings);
+              api.updateSettings(newSettings).catch(console.error);
+            }}
+            prefs={viewPreferences}
+            onPrefsChange={handlePrefsChange}
+            onResetView={handleResetView}
+          />
+
+          <FileList
+            groups={groupedFiles}
+            viewMode={viewMode}
+            prefs={viewPreferences}
+            onSortChange={handleSortChange}
             selectedPaths={selectedPaths}
             onSelect={handleSelect}
             onOpen={handleOpen}
@@ -445,16 +527,6 @@ export const App: React.FC = () => {
             renamingPath={renamingPath}
             onRenameSubmit={handleRenameSubmit}
             onRenameCancel={() => setRenamingPath(null)}
-            sortBy={sortBy}
-            sortOrder={sortOrder}
-            onSortChange={(col) => {
-              if (sortBy === col) {
-                setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-              } else {
-                setSortBy(col);
-                setSortOrder("asc");
-              }
-            }}
             showExtensions={settings.showFileExtensions}
             showHidden={settings.showHiddenFiles}
           />
@@ -524,6 +596,16 @@ export const App: React.FC = () => {
                 : activeTab.path;
             api.showItemProperties(p);
           }}
+          onRefresh={refreshCurrentDir}
+          viewMode={viewMode}
+          onViewModeChange={(m) => {
+            setViewMode(m);
+            const newSettings: AppSettings = { ...settings, defaultViewMode: m };
+            setSettings(newSettings);
+            api.updateSettings(newSettings).catch(console.error);
+          }}
+          prefs={viewPreferences}
+          onPrefsChange={handlePrefsChange}
         />
       )}
 

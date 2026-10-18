@@ -385,9 +385,11 @@ mod tests {
             size: Some(1024),
             modified: Some(123456),
             created: Some(123456),
+            accessed: Some(123456),
             hidden: false,
             system: false,
             readonly: false,
+            attributes: 0,
         };
 
         db.insert_or_update(&entry, 1000).unwrap();

@@ -1,9 +1,9 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::fs::Metadata;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum EntryKind {
     File,
@@ -13,7 +13,7 @@ pub enum EntryKind {
     Link,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FileEntry {
     pub name: String,
@@ -28,9 +28,11 @@ pub struct FileEntry {
     /// Milliseconds since the Unix epoch.
     pub modified: Option<i64>,
     pub created: Option<i64>,
+    pub accessed: Option<i64>,
     pub hidden: bool,
     pub system: bool,
     pub readonly: bool,
+    pub attributes: u32,
 }
 
 pub fn to_millis(t: std::io::Result<SystemTime>) -> Option<i64> {
@@ -94,9 +96,11 @@ pub fn entry_from_metadata(path: &Path, name: String, md: &Metadata) -> FileEntr
         size: if is_dir_like { None } else { Some(md.len()) },
         modified: to_millis(md.modified()),
         created: to_millis(md.created()),
+        accessed: to_millis(md.accessed()),
         hidden: attrs & ATTR_HIDDEN != 0,
         system: attrs & ATTR_SYSTEM != 0,
         readonly: attrs & ATTR_READONLY != 0,
+        attributes: attrs,
     }
 }
 

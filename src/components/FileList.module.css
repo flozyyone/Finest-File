@@ -40,7 +40,72 @@
   margin-left: 4px;
 }
 
-.rowsBody {
+.contentBody {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+/* Grouping styles */
+.groupSection {
+  display: flex;
+  flex-direction: column;
+}
+
+.groupHeader {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px 6px 10px;
+  cursor: pointer;
+  gap: 6px;
+  user-select: none;
+}
+
+.groupHeader:hover .groupTitle {
+  color: var(--accent);
+}
+
+.groupToggleBtn {
+  background: transparent;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  color: var(--text-muted);
+}
+
+.chevron {
+  color: var(--text-muted);
+}
+
+.groupTitle {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-main);
+  transition: color 0.15s ease;
+}
+
+.groupCount {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.groupSizeTotal {
+  font-size: 11px;
+  color: var(--text-subtle);
+  margin-left: 4px;
+}
+
+.groupDivider {
+  flex: 1;
+  height: 1px;
+  background-color: var(--border-subtle);
+  margin-left: 10px;
+}
+
+.rowsSubContainer {
   display: flex;
   flex-direction: column;
 }
@@ -52,7 +117,7 @@
   padding: 0 4px;
   cursor: pointer;
   border-radius: var(--radius-sm);
-  margin: 0 4px;
+  margin: 0 6px;
 }
 
 .row:hover {
@@ -120,15 +185,12 @@
 }
 
 /* Grid view styles */
-.gridContainer {
-  flex: 1;
+.gridSubContainer {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
   grid-auto-rows: 96px;
   gap: 8px;
-  padding: 12px;
-  overflow-y: auto;
-  background-color: var(--bg-surface);
+  padding: 8px 12px 14px 12px;
 }
 
 .gridItem {

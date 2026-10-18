@@ -101,9 +101,11 @@ pub fn search_index(db: &IndexDb, q: &SearchQuery) -> FsResult<Vec<SearchResultI
             size,
             modified,
             created,
+            accessed: None,
             hidden: false,
             system: false,
             readonly: false,
+            attributes: 0,
         })
     }).map_err(FsError::from)?;
 

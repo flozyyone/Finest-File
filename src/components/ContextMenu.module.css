@@ -45,6 +45,7 @@
   color: var(--text-main);
   cursor: pointer;
   text-align: left;
+  width: 100%;
 }
 
 .item:hover:not(:disabled) {
@@ -62,8 +63,47 @@
   color: var(--text-subtle);
 }
 
+.arrowRight {
+  margin-left: auto;
+  color: var(--text-muted);
+}
+
+.checkIcon {
+  width: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
 .separator {
   height: 1px;
   background-color: var(--border-subtle);
   margin: 4px 2px;
+}
+
+.submenuTrigger {
+  position: relative;
+  width: 100%;
+}
+
+.submenu {
+  position: absolute;
+  top: -4px;
+  left: calc(100% + 2px);
+  width: 195px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popup);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  z-index: 1001;
+  animation: fadeIn 0.08s ease-out;
+}
+
+.submenuLeft {
+  left: auto;
+  right: calc(100% + 2px);
 }

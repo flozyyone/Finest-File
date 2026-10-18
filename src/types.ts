@@ -9,9 +9,46 @@ export interface FileEntry {
   size?: number;
   modified?: number;
   created?: number;
+  accessed?: number;
   hidden: boolean;
   system: boolean;
   readonly: boolean;
+  attributes: number;
+}
+
+export type SortField =
+  | "name"
+  | "extension"
+  | "size"
+  | "date_modified"
+  | "date_created"
+  | "date_accessed"
+  | "attributes";
+
+export type SortDirection = "ascending" | "descending";
+
+export type GroupMode =
+  | "none"
+  | "name_range"
+  | "extension"
+  | "size"
+  | "date_modified"
+  | "date_created"
+  | "attributes";
+
+export interface ViewPreferences {
+  sortField: SortField;
+  sortDirection: SortDirection;
+  groupMode: GroupMode;
+  groupDirection: SortDirection;
+  foldersFirst: boolean;
+}
+
+export interface FileGroup {
+  key: string;
+  title: string;
+  items: FileEntry[];
+  totalBytes: number;
 }
 
 export interface DirListing {
@@ -127,5 +164,6 @@ export interface AppSettings {
   defaultViewMode: "details" | "grid";
   dualPaneEnabled: boolean;
   confirmDelete: boolean;
+  viewPreferences: ViewPreferences;
   index: IndexSettings;
 }

@@ -10,6 +10,8 @@ import {
   SearchResultItem,
   SystemInfo,
   AppSettings,
+  ViewPreferences,
+  FileGroup,
 } from "./types";
 
 export const api = {
@@ -78,6 +80,9 @@ export const api = {
   getSettings: () => invoke<AppSettings>("get_settings"),
   updateSettings: (newSettings: AppSettings) =>
     invoke<void>("update_settings", { newSettings }),
+
+  groupAndSortFiles: (entries: FileEntry[], prefs: ViewPreferences) =>
+    invoke<FileGroup[]>("group_and_sort_files", { entries, prefs }),
 
   onJobProgress: (cb: (progress: JobProgress) => void): Promise<UnlistenFn> => {
     return listen<JobProgress>("job-progress", (event) => cb(event.payload));

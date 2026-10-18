@@ -3,7 +3,7 @@
 
 mod commands;
 
-use finestfile_core::index::{IndexDb, IndexSettings, ScannerState};
+use finestfile_core::index::{IndexDb, ScannerState};
 use finestfile_core::jobs::{JobManager, JobProgress, JobSink};
 use finestfile_core::settings::{load_settings, settings_file_path, AppSettings};
 use std::path::PathBuf;
@@ -84,6 +84,7 @@ fn main() {
             commands::clear_index,
             commands::get_settings,
             commands::update_settings,
+            commands::group_and_sort_files,
         ])
         .run(tauri::generate_context!())
         .expect("error while running FinestFile desktop application");

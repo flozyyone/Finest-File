@@ -1,6 +1,6 @@
 use crate::AppState;
-use finestfile_core::archive::{self, ArchiveFormat, ArchiveListing};
-use finestfile_core::error::{ErrorCode, FsError, FsResult};
+use finestfile_core::archive::{self, ArchiveListing};
+use finestfile_core::error::{ErrorCode, FsError};
 use finestfile_core::index::{self, IndexStatus};
 use finestfile_core::jobs::{JobKind, JobProgress};
 use finestfile_core::listing::{self, DirListing};
@@ -9,6 +9,7 @@ use finestfile_core::ops;
 use finestfile_core::platform::{self, DriveInfo, KnownFolder};
 use finestfile_core::search::{self, SearchQuery, SearchResultItem};
 use finestfile_core::settings::{save_settings, AppSettings};
+use finestfile_core::sorting::{self, FileGroup, ViewPreferences};
 use finestfile_core::transfer::{self, ConflictPolicy, ConflictReport, TransferMode};
 use serde::Serialize;
 use std::path::{Path, PathBuf};
@@ -265,4 +266,17 @@ pub fn update_settings(state: State<'_, AppState>, new_settings: AppSettings) ->
     let mut s = state.settings.lock().unwrap();
     *s = new_settings.clone();
     save_settings(&state.settings_path, &new_settings)
+}
+
+#[tauri::command]
+pub fn group_and_sort_files(
+    entries: Vec<FileEntry>,
+    prefs: ViewPreferences,
+) -> Vec<FileGroup> {
+    let now_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0);
+
+    sorting::group_and_sort_entries(&entries, &prefs, now_ms)
 }
