@@ -118,6 +118,13 @@ export const ru: TranslationDictionary = {
     fileNamePlaceholder: "Новый документ.txt",
     alreadyExists: "Элемент с таким именем уже существует в этой папке.",
     invalidChars: "Имя файла не должно содержать следующие знаки: \\ / : * ? \" < > |",
+    bakItUp: "Bak-it-Up!",
+    groupTabs: "Grupla",
+    adminMode: "Режим администратора",
+    changeAttributes: "Изменить атрибуты и время",
+    workspaces: "Рабочие области",
+    saveWorkspace: "Сохранить рабочую область",
+    restoreWorkspace: "Восстановить область",
   },
   properties: {
     title: "Свойства",
@@ -155,6 +162,7 @@ export const ru: TranslationDictionary = {
     showExtensions: "Показывать расширения имен файлов",
     confirmDelete: "Запрашивать подтверждение при удалении",
     dualPane: "Включить двухпанельный режим",
+    windowsExplorerMode: "Режим Проводника Windows (Классический вид)",
     colors: {
       blue: "Windows Синий",
       teal: "Северная бирюза",

@@ -61,6 +61,15 @@
   font-weight: 500;
 }
 
+.toolBtn.bakItUpBtn {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.toolBtn.bakItUpBtn:hover {
+  background-color: var(--bg-hover);
+}
+
 .chevron {
   opacity: 0.7;
   margin-left: -2px;
@@ -215,3 +224,108 @@
   background-color: var(--bg-hover);
   color: var(--accent);
 }
+
+/* Windows 11 Command Bar (Fluent Explorer style) */
+.commandBar {
+  display: flex;
+  align-items: center;
+  height: 46px;
+  padding: 0 10px;
+  background-color: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  gap: 3px;
+  user-select: none;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 15;
+}
+
+.commandBtn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text-main);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  white-space: nowrap;
+}
+
+.commandBtn:hover:not(:disabled) {
+  background-color: var(--bg-hover);
+}
+
+.commandBtn:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
+.commandBtn.active {
+  background-color: var(--bg-hover);
+  border-color: var(--border-subtle);
+}
+
+.iconOnlyBtn {
+  padding: 0 8px;
+}
+
+.commandDivider {
+  width: 1px;
+  height: 22px;
+  background-color: var(--border-subtle);
+  margin: 0 4px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+/* Windows Explorer Mode Switcher Button */
+.modeSwitcherBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 12px;
+  background: var(--bg-panel, rgba(0, 0, 0, 0.04));
+  border: 1px solid var(--border-subtle);
+  border-radius: 15px;
+  color: var(--text-main);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.modeSwitcherBtn:hover {
+  background: var(--bg-selected);
+  border-color: var(--accent);
+}
+
+.modeSwitcherBtn.active {
+  background: var(--accent);
+  color: var(--accent-text, #ffffff);
+  border-color: var(--accent);
+  box-shadow: 0 2px 6px rgba(0, 95, 184, 0.25);
+}
+
+.winIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+.shortcutLabel {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: auto;
+  padding-left: 14px;
+}
+

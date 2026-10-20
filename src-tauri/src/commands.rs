@@ -310,3 +310,119 @@ pub fn get_media_preview(
         .unwrap_or_else(|| PathBuf::from("cache").join("thumbnails"));
     finestfile_core::thumbnail::get_preview_info(&p, &cache_dir)
 }
+
+// --- BAK-IT-UP! COMMANDS ---
+
+#[tauri::command]
+pub fn create_backup_command(
+    sources: Vec<String>,
+    target_dir: String,
+    custom_name: Option<String>,
+    is_single_file_bak: bool,
+) -> Result<finestfile_core::backup::BackupManifest, FsError> {
+    let p = PathBuf::from(&target_dir);
+    finestfile_core::backup::create_backup(
+        &sources,
+        &p,
+        custom_name.as_deref(),
+        is_single_file_bak,
+    )
+}
+
+#[tauri::command]
+pub fn verify_backup_command(
+    backup_root_dir: String,
+) -> Result<finestfile_core::backup::BackupVerifyResult, FsError> {
+    let p = PathBuf::from(&backup_root_dir);
+    finestfile_core::backup::verify_backup(&p)
+}
+
+#[tauri::command]
+pub fn preview_restore_command(
+    backup_root_dir: String,
+    target_restore_dir: String,
+) -> Result<finestfile_core::backup::RestorePreview, FsError> {
+    let b = PathBuf::from(&backup_root_dir);
+    let t = PathBuf::from(&target_restore_dir);
+    finestfile_core::backup::preview_restore(&b, &t)
+}
+
+#[tauri::command]
+pub fn restore_backup_command(
+    backup_root_dir: String,
+    target_restore_dir: String,
+    policy: finestfile_core::backup::RestorePolicy,
+) -> Result<usize, FsError> {
+    let b = PathBuf::from(&backup_root_dir);
+    let t = PathBuf::from(&target_restore_dir);
+    finestfile_core::backup::restore_backup(&b, &t, policy)
+}
+
+#[tauri::command]
+pub fn list_all_backups_command() -> Vec<finestfile_core::backup::BackupManifest> {
+    finestfile_core::backup::list_all_backups()
+}
+
+// --- WORKSPACE & TAB GROUPING COMMANDS ---
+
+#[tauri::command]
+pub fn list_workspaces_command() -> Vec<finestfile_core::workspaces::Workspace> {
+    finestfile_core::workspaces::list_workspaces()
+}
+
+#[tauri::command]
+pub fn save_workspace_command(
+    name: String,
+    tabs: Vec<finestfile_core::workspaces::WorkspaceTab>,
+    active_tab_id: String,
+    is_dual_pane: bool,
+    secondary_path: Option<String>,
+) -> Result<finestfile_core::workspaces::Workspace, FsError> {
+    finestfile_core::workspaces::save_workspace(
+        &name,
+        tabs,
+        &active_tab_id,
+        is_dual_pane,
+        secondary_path,
+    )
+}
+
+#[tauri::command]
+pub fn delete_workspace_command(id: String) -> Result<(), FsError> {
+    finestfile_core::workspaces::delete_workspace(&id)
+}
+
+#[tauri::command]
+pub fn export_workspaces_command(export_path: String) -> Result<(), FsError> {
+    let p = PathBuf::from(&export_path);
+    finestfile_core::workspaces::export_workspaces(&p)
+}
+
+#[tauri::command]
+pub fn import_workspaces_command(import_path: String) -> Result<usize, FsError> {
+    let p = PathBuf::from(&import_path);
+    finestfile_core::workspaces::import_workspaces(&p)
+}
+
+// --- ATTRIBUTES & TIMES COMMANDS ---
+
+#[tauri::command]
+pub fn set_file_attributes_command(
+    update: finestfile_core::platform::FileAttributesUpdate,
+) -> Result<(), FsError> {
+    finestfile_core::platform::set_file_attributes(&update)
+}
+
+#[tauri::command]
+pub fn set_file_times_command(
+    update: finestfile_core::platform::FileTimesUpdate,
+) -> Result<(), FsError> {
+    finestfile_core::platform::set_file_times(&update)
+}
+
+// --- ELEVATION (SAFE ADMIN) COMMAND ---
+
+#[tauri::command]
+pub fn request_admin_elevation() -> Result<(), FsError> {
+    finestfile_core::platform::elevate_application()
+}

@@ -180,7 +180,24 @@ export interface MediaPreviewInfo {
   height?: number;
   durationSecs?: number;
   thumbnailUrl?: string;
+  title?: string;
+  artist?: string;
+  album?: string;
+  trackNumber?: number;
+  year?: number;
+  genre?: string;
 }
+
+export type ViewMode =
+  | "details"
+  | "grid"
+  | "tiles"
+  | "list"
+  | "content"
+  | "small-icons"
+  | "medium-icons"
+  | "large-icons"
+  | "extra-large-icons";
 
 export interface AppSettings {
   theme: "system" | "light" | "dark";
@@ -190,12 +207,91 @@ export interface AppSettings {
   language: SupportedLanguage;
   showHiddenFiles: boolean;
   showFileExtensions: boolean;
-  defaultViewMode: "details" | "grid";
+  defaultViewMode: ViewMode;
   dualPaneEnabled: boolean;
   confirmDelete: boolean;
   viewPreferences: ViewPreferences;
   customShortcuts?: Record<string, string>;
   gridPixelSize?: number;
   previewPaneOpen?: boolean;
+  windowsExplorerMode?: boolean;
   index: IndexSettings;
 }
+
+// --- BAK-IT-UP! TYPES ---
+export interface BackupFileEntry {
+  relativePath: string;
+  originalPath: string;
+  size: number;
+  sha256: string;
+  modifiedMs: number;
+}
+
+export interface BackupManifest {
+  version: number;
+  backupId: string;
+  name: string;
+  createdAtMs: number;
+  totalSize: number;
+  totalFiles: number;
+  files: BackupFileEntry[];
+  backupRootDir: string;
+}
+
+export interface BackupVerifyResult {
+  isValid: boolean;
+  verifiedFiles: number;
+  corruptOrMissing: string[];
+}
+
+export interface RestorePreviewItem {
+  relativePath: string;
+  targetPath: string;
+  existsAtTarget: boolean;
+  sizeDiffers: boolean;
+  targetIsNewer: boolean;
+}
+
+export interface RestorePreview {
+  backupId: string;
+  totalFiles: number;
+  conflictsCount: number;
+  items: RestorePreviewItem[];
+}
+
+export type RestorePolicy = "skip_existing" | "overwrite_all" | "keep_both";
+
+// --- WORKSPACE TYPES ---
+export interface WorkspaceTab {
+  id: string;
+  path: string;
+  title: string;
+}
+
+export interface Workspace {
+  id: string;
+  name: string;
+  tabs: WorkspaceTab[];
+  activeTabId: string;
+  isDualPane: boolean;
+  secondaryPath?: string;
+  createdAtMs: number;
+  updatedAtMs: number;
+}
+
+// --- ATTRIBUTES & TIMES TYPES ---
+export interface FileAttributesUpdate {
+  path: string;
+  readonly?: boolean;
+  hidden?: boolean;
+  system?: boolean;
+  archive?: boolean;
+}
+
+export interface FileTimesUpdate {
+  path: string;
+  createdMs?: number;
+  modifiedMs?: number;
+  accessedMs?: number;
+}
+

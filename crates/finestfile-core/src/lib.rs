@@ -18,6 +18,8 @@ pub mod sorting;
 pub mod transfer;
 pub mod window_state;
 pub mod thumbnail;
+pub mod backup;
+pub mod workspaces;
 
 pub mod index;
 

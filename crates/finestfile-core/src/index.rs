@@ -3,7 +3,7 @@
 //! Stores file metadata (path, name, ext, kind, size, modified, indexed_at)
 //! with WAL mode, transactions, schema migrations, and exclusion support.
 
-use crate::error::{ErrorCode, FsError, FsResult};
+use crate::error::{FsError, FsResult};
 use crate::model::{entry_from_metadata, EntryKind, FileEntry};
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
@@ -11,7 +11,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
 
 pub const SCHEMA_VERSION: i32 = 1;
 
@@ -57,6 +56,7 @@ pub struct IndexStatus {
 #[derive(Clone)]
 pub struct IndexDb {
     pub(crate) conn: Arc<Mutex<Connection>>,
+    #[allow(dead_code)]
     db_path: PathBuf,
 }
 

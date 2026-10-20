@@ -69,7 +69,7 @@ def draw_folder(size):
     # Downsample with high-quality Lanczos
     return img.resize((size, size), Image.Resampling.LANCZOS)
 
-out_dir = r"c:\Users\katsu\Desktop\Yeni klasör (2)\FinestFile\assets"
+out_dir = os.path.dirname(os.path.abspath(__file__))
 os.makedirs(out_dir, exist_ok=True)
 
 # Generate master PNG

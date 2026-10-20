@@ -118,6 +118,13 @@ export const es: TranslationDictionary = {
     fileNamePlaceholder: "Nuevo documento.txt",
     alreadyExists: "Ya existe un elemento con este nombre en esta carpeta.",
     invalidChars: "Los nombres de archivo no pueden contener los siguientes caracteres: \\ / : * ? \" < > |",
+    bakItUp: "Bak-it-Up!",
+    groupTabs: "Grupla",
+    adminMode: "Modo Administrador",
+    changeAttributes: "Cambiar atributos y fechas",
+    workspaces: "Espacios de trabajo",
+    saveWorkspace: "Guardar espacio de trabajo",
+    restoreWorkspace: "Restaurar espacio de trabajo",
   },
   properties: {
     title: "Propiedades",
@@ -155,6 +162,7 @@ export const es: TranslationDictionary = {
     showExtensions: "Mostrar extensiones de nombre de archivo",
     confirmDelete: "Mostrar cuadro de confirmación al eliminar",
     dualPane: "Habilitar diseño de doble panel",
+    windowsExplorerMode: "Modo Explorador de Windows (Diseño Nativo)",
     colors: {
       blue: "Azul Windows",
       teal: "Verde azulado nórdico",

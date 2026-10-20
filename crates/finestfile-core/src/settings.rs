@@ -44,6 +44,8 @@ pub struct AppSettings {
     pub grid_pixel_size: u32,
     #[serde(default)]
     pub preview_pane_open: bool,
+    #[serde(default)]
+    pub windows_explorer_mode: bool,
     pub index: IndexSettings,
 }
 
@@ -68,6 +70,7 @@ impl Default for AppSettings {
             custom_shortcuts: std::collections::HashMap::new(),
             grid_pixel_size: 96,
             preview_pane_open: false,
+            windows_explorer_mode: false,
             index: IndexSettings::default(),
         }
     }

@@ -18,3 +18,21 @@ export function formatDate(timestamp?: number): string {
     minute: "2-digit",
   });
 }
+
+export function formatDuration(seconds?: number): string {
+  if (seconds === undefined || seconds === null || isNaN(seconds) || !isFinite(seconds) || seconds < 0) {
+    return "--";
+  }
+  const total = Math.floor(seconds);
+  const s = total % 60;
+  const m = Math.floor(total / 60) % 60;
+  const h = Math.floor(total / 3600);
+
+  const pad = (n: number) => n.toString().padStart(2, "0");
+
+  if (h > 0) {
+    return `${h}:${pad(m)}:${pad(s)}`;
+  }
+  return `${pad(m)}:${pad(s)}`;
+}
+

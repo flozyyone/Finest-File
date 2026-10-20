@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { FileEntry, ViewPreferences, SortField, GroupMode } from "../types";
+import { FileEntry, ViewPreferences, SortField, GroupMode, ViewMode } from "../types";
 import {
   FolderPlus,
   FilePlus,
@@ -20,6 +20,9 @@ import {
   Check,
   RefreshCw,
   Eye,
+  Share2,
+  Archive,
+  Sliders,
 } from "lucide-react";
 import { useI18n } from "../i18n";
 import styles from "./ContextMenu.module.css";
@@ -43,12 +46,16 @@ export interface ContextMenuProps {
   onCreateArchive: () => void;
   onExtractArchive: () => void;
   onProperties: () => void;
+  onOpenInExplorer?: () => void;
   onRefresh?: () => void;
   onQuickPreview?: () => void;
-  viewMode?: "details" | "grid";
-  onViewModeChange?: (mode: "details" | "grid") => void;
+  viewMode?: ViewMode;
+  onViewModeChange?: (mode: ViewMode) => void;
   prefs?: ViewPreferences;
   onPrefsChange?: (newPrefs: ViewPreferences) => void;
+  windowsExplorerMode?: boolean;
+  onBakItUp?: () => void;
+  onChangeAttributes?: () => void;
 }
 
 export const ContextMenu: React.FC<ContextMenuProps> = ({
@@ -70,12 +77,16 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   onCreateArchive,
   onExtractArchive,
   onProperties,
+  onOpenInExplorer,
   onRefresh,
   onQuickPreview,
   viewMode,
   onViewModeChange,
   prefs,
   onPrefsChange,
+  windowsExplorerMode = false,
+  onBakItUp,
+  onChangeAttributes,
 }) => {
   const { dict, dir } = useI18n();
   const [activeSubmenu, setActiveSubmenu] = useState<"view" | "sort" | "group" | null>(null);
@@ -128,6 +139,48 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       >
         {!isBackground ? (
           <>
+            {windowsExplorerMode && (
+              <div className={styles.win11TopRow}>
+                <button
+                  className={styles.topRowBtn}
+                  onClick={() => { onCut(); onClose(); }}
+                  title={`${dict.common.cut} (Ctrl+X)`}
+                >
+                  <Scissors size={15} />
+                </button>
+                <button
+                  className={styles.topRowBtn}
+                  onClick={() => { onCopy(); onClose(); }}
+                  title={`${dict.common.copy} (Ctrl+C)`}
+                >
+                  <Copy size={15} />
+                </button>
+                {isSingle && (
+                  <button
+                    className={styles.topRowBtn}
+                    onClick={() => { onRename(); onClose(); }}
+                    title={`${dict.common.rename} (F2)`}
+                  >
+                    <Edit2 size={15} />
+                  </button>
+                )}
+                <button
+                  className={styles.topRowBtn}
+                  onClick={() => { onCopyPath(); onClose(); }}
+                  title={dict.operations.copyPath}
+                >
+                  <Share2 size={15} />
+                </button>
+                <button
+                  className={styles.topRowBtn}
+                  onClick={() => { onDelete(false); onClose(); }}
+                  title={`${dict.common.delete} (Del)`}
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            )}
+
             <button className={styles.item} onClick={() => { onOpen(); onClose(); }}>
               <ExternalLink size={15} />
               <span>{dict.operations.openDefault}</span>
@@ -189,6 +242,27 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 
             <div className={styles.separator} />
 
+            {onBakItUp && (
+              <button className={styles.item} onClick={() => { onBakItUp(); onClose(); }}>
+                <Archive size={15} />
+                <span>{dict.operations.bakItUp}</span>
+              </button>
+            )}
+
+            {onChangeAttributes && (
+              <button className={styles.item} onClick={() => { onChangeAttributes(); onClose(); }}>
+                <Sliders size={15} />
+                <span>{dict.operations.changeAttributes}</span>
+              </button>
+            )}
+
+            {onOpenInExplorer && (
+              <button className={styles.item} onClick={() => { onOpenInExplorer(); onClose(); }}>
+                <ExternalLink size={15} />
+                <span>Open in Windows File Explorer</span>
+              </button>
+            )}
+
             <button className={styles.item} onClick={() => { onProperties(); onClose(); }}>
               <Info size={15} />
               <span>{dict.common.properties}</span>
@@ -209,7 +283,67 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                   <ChevronRight size={13} className={`${styles.arrowRight} ${dir === "rtl" ? "rtlMirror" : ""}`} />
                 </button>
                 {activeSubmenu === "view" && (
-                  <div className={`${styles.submenu} ${flipHorizontal ? styles.submenuLeft : ""}`}>
+                  <div className={`${styles.submenu} ${flipHorizontal ? styles.submenuLeft : ""}`} style={{ width: 220 }}>
+                    <button
+                      className={styles.item}
+                      onClick={() => {
+                        onViewModeChange("extra-large-icons");
+                        onClose();
+                      }}
+                    >
+                      <span className={styles.checkIcon}>
+                        {viewMode === "extra-large-icons" && <Check size={13} color="var(--accent)" />}
+                      </span>
+                      <span>Extra large icons</span>
+                    </button>
+                    <button
+                      className={styles.item}
+                      onClick={() => {
+                        onViewModeChange("large-icons");
+                        onClose();
+                      }}
+                    >
+                      <span className={styles.checkIcon}>
+                        {(viewMode === "large-icons" || viewMode === "grid") && <Check size={13} color="var(--accent)" />}
+                      </span>
+                      <span>Large icons</span>
+                    </button>
+                    <button
+                      className={styles.item}
+                      onClick={() => {
+                        onViewModeChange("medium-icons");
+                        onClose();
+                      }}
+                    >
+                      <span className={styles.checkIcon}>
+                        {viewMode === "medium-icons" && <Check size={13} color="var(--accent)" />}
+                      </span>
+                      <span>Medium icons</span>
+                    </button>
+                    <button
+                      className={styles.item}
+                      onClick={() => {
+                        onViewModeChange("small-icons");
+                        onClose();
+                      }}
+                    >
+                      <span className={styles.checkIcon}>
+                        {viewMode === "small-icons" && <Check size={13} color="var(--accent)" />}
+                      </span>
+                      <span>Small icons</span>
+                    </button>
+                    <button
+                      className={styles.item}
+                      onClick={() => {
+                        onViewModeChange("list");
+                        onClose();
+                      }}
+                    >
+                      <span className={styles.checkIcon}>
+                        {viewMode === "list" && <Check size={13} color="var(--accent)" />}
+                      </span>
+                      <span>List</span>
+                    </button>
                     <button
                       className={styles.item}
                       onClick={() => {
@@ -220,21 +354,31 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                       <span className={styles.checkIcon}>
                         {viewMode === "details" && <Check size={13} color="var(--accent)" />}
                       </span>
-                      <List size={14} />
-                      <span>{dict.view.details}</span>
+                      <span>Details</span>
                     </button>
                     <button
                       className={styles.item}
                       onClick={() => {
-                        onViewModeChange("grid");
+                        onViewModeChange("tiles");
                         onClose();
                       }}
                     >
                       <span className={styles.checkIcon}>
-                        {viewMode === "grid" && <Check size={13} color="var(--accent)" />}
+                        {viewMode === "tiles" && <Check size={13} color="var(--accent)" />}
                       </span>
-                      <LayoutGrid size={14} />
-                      <span>{dict.view.grid}</span>
+                      <span>Tiles</span>
+                    </button>
+                    <button
+                      className={styles.item}
+                      onClick={() => {
+                        onViewModeChange("content");
+                        onClose();
+                      }}
+                    >
+                      <span className={styles.checkIcon}>
+                        {viewMode === "content" && <Check size={13} color="var(--accent)" />}
+                      </span>
+                      <span>Content</span>
                     </button>
                   </div>
                 )}
@@ -421,6 +565,19 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
             </button>
 
             <div className={styles.separator} />
+
+            {onOpenInExplorer && (
+              <button
+                className={styles.item}
+                onClick={() => {
+                  onOpenInExplorer();
+                  onClose();
+                }}
+              >
+                <ExternalLink size={15} />
+                <span>Open in Windows File Explorer</span>
+              </button>
+            )}
 
             <button className={styles.item} onClick={() => { onProperties(); onClose(); }}>
               <Info size={15} />

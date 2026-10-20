@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { AppSettings, IndexStatus } from "../types";
+import { AppSettings, IndexStatus, ViewMode } from "../types";
 import { formatBytes } from "../utils/format";
 import { X, Play, Square, RotateCcw, FolderCheck, ShieldAlert } from "lucide-react";
 import { useI18n, SUPPORTED_LANGUAGES } from "../i18n";
@@ -203,11 +203,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     onChange={(e) =>
                       setLocalSettings({
                         ...localSettings,
-                        defaultViewMode: e.target.value as "details" | "grid",
+                        defaultViewMode: e.target.value as ViewMode,
                       })
                     }
                   >
                     <option value="details">{dict.view.details}</option>
+                    <option value="extra-large-icons">Extra large icons</option>
+                    <option value="large-icons">Large icons</option>
+                    <option value="medium-icons">Medium icons</option>
+                    <option value="small-icons">Small icons</option>
+                    <option value="list">List</option>
+                    <option value="tiles">Tiles</option>
+                    <option value="content">Content</option>
                     <option value="grid">{dict.view.grid}</option>
                   </select>
                 </div>
@@ -273,6 +280,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     }
                   />
                   <label htmlFor="dualPane">{dict.settings.dualPane}</label>
+                </div>
+
+                <div className={styles.checkboxRow} style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--border-subtle)" }}>
+                  <input
+                    type="checkbox"
+                    id="windowsExplorerMode"
+                    checked={localSettings.windowsExplorerMode ?? false}
+                    onChange={(e) =>
+                      setLocalSettings({
+                        ...localSettings,
+                        windowsExplorerMode: e.target.checked,
+                      })
+                    }
+                  />
+                  <label htmlFor="windowsExplorerMode" style={{ fontWeight: 600 }}>
+                    {dict.settings.windowsExplorerMode}
+                  </label>
                 </div>
               </div>
             )}

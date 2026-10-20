@@ -118,6 +118,13 @@ export const ur: TranslationDictionary = {
     fileNamePlaceholder: "نئی دستاویز.txt",
     alreadyExists: "اس فولڈر میں اس نام کا ایک آئٹم پہلے سے موجود ہے۔",
     invalidChars: "فائل نام میں یہ حروف شامل نہیں ہو سکتے: \\ / : * ? \" < > |",
+    bakItUp: "Bak-it-Up!",
+    groupTabs: "Grupla",
+    adminMode: "ایڈمنسٹریٹر موڈ",
+    changeAttributes: "اوصاف اور اوقات تبدیل کریں",
+    workspaces: "ورک اسپیسز",
+    saveWorkspace: "ورک اسپیس محفوظ کریں",
+    restoreWorkspace: "ورک اسپیس بحال کریں",
   },
   properties: {
     title: "خصوصیات",
@@ -155,6 +162,7 @@ export const ur: TranslationDictionary = {
     showExtensions: "فائل ایکسٹینشنز دکھائیں",
     confirmDelete: "حذف کرنے سے پہلے تصدیق طلب کریں",
     dualPane: "دوہرے پینل کا منظر فعال کریں",
+    windowsExplorerMode: "ونڈوز ایکسپلورر موڈ (اصل لے آؤٹ اور رویہ)",
     colors: {
       blue: "ونڈوز نیلا",
       teal: "نارڈک فیروزی",

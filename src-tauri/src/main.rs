@@ -162,6 +162,19 @@ fn main() {
             commands::group_and_sort_files,
             commands::get_file_thumbnail,
             commands::get_media_preview,
+            commands::create_backup_command,
+            commands::verify_backup_command,
+            commands::preview_restore_command,
+            commands::restore_backup_command,
+            commands::list_all_backups_command,
+            commands::list_workspaces_command,
+            commands::save_workspace_command,
+            commands::delete_workspace_command,
+            commands::export_workspaces_command,
+            commands::import_workspaces_command,
+            commands::set_file_attributes_command,
+            commands::set_file_times_command,
+            commands::request_admin_elevation,
         ])
         .run(tauri::generate_context!())
         .expect("error while running FinestFile desktop application");

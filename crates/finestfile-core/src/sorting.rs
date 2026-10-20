@@ -4,7 +4,7 @@
 //! for file entries with natural alphanumeric ordering, date ranges, size bins,
 //! file attributes, extensions, and configurable folder precedence.
 
-use crate::model::{FileEntry, ATTR_DIRECTORY};
+use crate::model::FileEntry;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
@@ -428,7 +428,7 @@ pub fn group_and_sort_entries(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::EntryKind;
+    use crate::model::{EntryKind, ATTR_DIRECTORY};
 
     fn make_test_entry(name: &str, size: Option<u64>, modified: Option<i64>, is_dir: bool) -> FileEntry {
         FileEntry {

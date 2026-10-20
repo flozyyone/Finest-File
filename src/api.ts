@@ -14,6 +14,14 @@ import {
   FileGroup,
   ThumbnailResult,
   MediaPreviewInfo,
+  BackupManifest,
+  BackupVerifyResult,
+  RestorePreview,
+  RestorePolicy,
+  Workspace,
+  WorkspaceTab,
+  FileAttributesUpdate,
+  FileTimesUpdate,
 } from "./types";
 
 export const api = {
@@ -91,6 +99,70 @@ export const api = {
 
   getMediaPreview: (path: string) =>
     invoke<MediaPreviewInfo>("get_media_preview", { path }),
+
+  // Bak-it-Up!
+  createBackup: (
+    sources: string[],
+    targetDir: string,
+    customName?: string,
+    isSingleFileBak: boolean = false
+  ) =>
+    invoke<BackupManifest>("create_backup_command", {
+      sources,
+      targetDir,
+      customName,
+      isSingleFileBak,
+    }),
+  verifyBackup: (backupRootDir: string) =>
+    invoke<BackupVerifyResult>("verify_backup_command", { backupRootDir }),
+  previewRestore: (backupRootDir: string, targetRestoreDir: string) =>
+    invoke<RestorePreview>("preview_restore_command", {
+      backupRootDir,
+      targetRestoreDir,
+    }),
+  restoreBackup: (
+    backupRootDir: string,
+    targetRestoreDir: string,
+    policy: RestorePolicy
+  ) =>
+    invoke<number>("restore_backup_command", {
+      backupRootDir,
+      targetRestoreDir,
+      policy,
+    }),
+  listAllBackups: () => invoke<BackupManifest[]>("list_all_backups_command"),
+
+  // Workspaces
+  listWorkspaces: () => invoke<Workspace[]>("list_workspaces_command"),
+  saveWorkspace: (
+    name: string,
+    tabs: WorkspaceTab[],
+    activeTabId: string,
+    isDualPane: boolean = false,
+    secondaryPath?: string
+  ) =>
+    invoke<Workspace>("save_workspace_command", {
+      name,
+      tabs,
+      activeTabId,
+      isDualPane,
+      secondaryPath,
+    }),
+  deleteWorkspace: (id: string) =>
+    invoke<void>("delete_workspace_command", { id }),
+  exportWorkspaces: (exportPath: string) =>
+    invoke<void>("export_workspaces_command", { exportPath }),
+  importWorkspaces: (importPath: string) =>
+    invoke<number>("import_workspaces_command", { importPath }),
+
+  // Attributes & Times
+  setFileAttributes: (update: FileAttributesUpdate) =>
+    invoke<void>("set_file_attributes_command", { update }),
+  setFileTimes: (update: FileTimesUpdate) =>
+    invoke<void>("set_file_times_command", { update }),
+
+  // Elevation
+  requestAdminElevation: () => invoke<void>("request_admin_elevation"),
 
   onJobProgress: (cb: (progress: JobProgress) => void): Promise<UnlistenFn> => {
     return listen<JobProgress>("job-progress", (event) => cb(event.payload));

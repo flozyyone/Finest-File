@@ -86,3 +86,27 @@
   background-color: var(--bg-hover);
   color: var(--text-main);
 }
+
+.gruplaBtn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  color: var(--text-main);
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 500;
+  margin-left: 8px;
+  transition: all 0.12s ease;
+}
+
+.gruplaBtn:hover {
+  background-color: var(--bg-hover);
+  border-color: var(--accent);
+  color: var(--accent);
+}

@@ -10,12 +10,13 @@ import {
   FileText,
   Folder,
   Film,
+  Music,
   ExternalLink,
 } from "lucide-react";
 import { FileEntry, MediaPreviewInfo } from "../types";
 import { api } from "../api";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { formatBytes } from "../utils/format";
+import { formatBytes, formatDuration } from "../utils/format";
 import { useI18n } from "../i18n";
 import styles from "./PreviewPane.module.css";
 
@@ -36,8 +37,10 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
   const [zoomLevel, setZoomLevel] = useState(1); // 1 = fit
   const [rotation, setRotation] = useState(0);
   const [isFit, setIsFit] = useState(true);
-  const [isPlayingVideo, setIsPlayingVideo] = useState(false);
   const [videoError, setVideoError] = useState(false);
+  const [videoMeta, setVideoMeta] = useState<{ width?: number; height?: number; duration?: number } | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   // Pan state
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -45,17 +48,24 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
   const dragStartRef = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    setVideoError(false);
+    setVideoMeta(null);
+
     if (!selectedEntry || selectedEntry.kind === "directory") {
       setPreviewInfo(null);
-      setIsPlayingVideo(false);
-      setVideoError(false);
       return;
     }
 
     let active = true;
     setLoading(true);
-    setIsPlayingVideo(false);
-    setVideoError(false);
     setZoomLevel(1);
     setRotation(0);
     setIsFit(true);
@@ -152,6 +162,7 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
   const ext = selectedEntry.ext.toLowerCase();
   const isImage = ["jpg", "jpeg", "png", "webp", "bmp", "gif", "tiff", "tif", "svg"].includes(ext) || previewInfo?.mediaType === "image";
   const isVideo = ["mp4", "mkv", "mov", "webm", "avi", "wmv", "m4v"].includes(ext) || previewInfo?.mediaType === "video";
+  const isAudio = ["mp3", "flac", "m4a", "aac", "ogg", "wav", "wma", "aiff", "alac", "opus"].includes(ext) || previewInfo?.mediaType === "audio";
 
   const assetUrl = selectedEntry.path ? convertFileSrc(selectedEntry.path) : "";
 
@@ -191,7 +202,7 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
               onMouseLeave={handleMouseUp}
             >
               <img
-                src={assetUrl || previewInfo?.thumbnailUrl || ""}
+                src={previewInfo?.thumbnailUrl || assetUrl || ""}
                 alt={selectedEntry.name}
                 className={styles.imagePreview}
                 style={{
@@ -200,6 +211,11 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
                     : `translate(${pan.x}px, ${pan.y}px) scale(${zoomLevel}) rotate(${rotation}deg)`,
                 }}
                 draggable={false}
+                onError={(e) => {
+                  if (previewInfo?.thumbnailUrl && e.currentTarget.src !== previewInfo.thumbnailUrl) {
+                    e.currentTarget.src = previewInfo.thumbnailUrl;
+                  }
+                }}
               />
             </div>
 
@@ -254,56 +270,74 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
           </>
         ) : isVideo ? (
           <div className={styles.mediaViewport}>
-            {isPlayingVideo ? (
-              videoError ? (
-                <div style={{ textAlign: "center", padding: 16 }}>
-                  <Film size={40} color="var(--accent)" />
-                  <p style={{ fontSize: 12, margin: "8px 0" }}>Format requires external player</p>
-                  <button
-                    className={styles.previewToolBtn}
-                    style={{ width: "auto", padding: "4px 8px" }}
-                    onClick={() => api.openItemDefault(selectedEntry.path)}
-                  >
-                    <ExternalLink size={13} />
-                    <span style={{ marginLeft: 4 }}>{dict.operations.openDefault}</span>
-                  </button>
-                </div>
-              ) : (
-                <video
-                  controls
-                  autoPlay
-                  className={styles.videoElement}
-                  src={assetUrl}
-                  onError={() => setVideoError(true)}
+            {videoError ? (
+              <div style={{ textAlign: "center", padding: 16 }}>
+                <Film size={40} color="var(--accent)" />
+                <p style={{ fontSize: 12, margin: "8px 0", color: "var(--text-muted)" }}>
+                  Bu video formatı veya çözücüsü yerleşik oynatıcıda desteklenmiyor.
+                </p>
+                <button
+                  className={styles.previewToolBtn}
+                  style={{ width: "auto", padding: "4px 8px" }}
+                  onClick={() => api.openItemDefault(selectedEntry.path)}
                 >
-                  {dict.errors.unexpected}
-                </video>
-              )
-            ) : (
-              <div className={styles.videoContainer}>
-                {previewInfo?.thumbnailUrl ? (
-                  <img
-                    src={previewInfo.thumbnailUrl}
-                    alt={selectedEntry.name}
-                    className={styles.imagePreview}
-                  />
-                ) : (
-                  <Film size={54} color="var(--accent)" strokeWidth={1.5} />
-                )}
-
-                {/* Explicit Play Button Overlay (NEVER AUTOPLAYS) */}
-                <div
-                  className={styles.videoOverlay}
-                  onClick={() => setIsPlayingVideo(true)}
-                  title={dict.operations.openDefault}
-                >
-                  <div className={styles.playBtnCircle}>
-                    <Play size={20} fill="currentColor" />
-                  </div>
-                </div>
+                  <ExternalLink size={13} />
+                  <span style={{ marginLeft: 4 }}>{dict.operations.openDefault}</span>
+                </button>
               </div>
+            ) : (
+              <video
+                key={selectedEntry.path}
+                ref={videoRef}
+                controls
+                playsInline
+                preload="metadata"
+                poster={previewInfo?.thumbnailUrl || undefined}
+                className={styles.videoElement}
+                src={assetUrl}
+                onLoadedMetadata={(e) => {
+                  const v = e.currentTarget;
+                  setVideoMeta({
+                    width: v.videoWidth,
+                    height: v.videoHeight,
+                    duration: v.duration,
+                  });
+                }}
+                onError={() => setVideoError(true)}
+              >
+                {dict.errors.unexpected}
+              </video>
             )}
           </div>
+        ) : isAudio ? (
+          <>
+            <div className={styles.mediaViewport}>
+              {previewInfo?.thumbnailUrl ? (
+                <div className={styles.audioCoverContainer}>
+                  <img
+                    src={previewInfo.thumbnailUrl}
+                    alt={previewInfo.title || selectedEntry.name}
+                    className={styles.imagePreview}
+                  />
+                </div>
+              ) : (
+                <div className={styles.audioDefaultCover}>
+                  <Music size={54} color="var(--accent)" strokeWidth={1.5} />
+                  <span className={styles.audioDefaultText}>
+                    {selectedEntry.ext.toUpperCase()} Audio
+                  </span>
+                </div>
+              )}
+            </div>
+            <audio
+              key={selectedEntry.path}
+              ref={audioRef}
+              controls
+              className={styles.audioElement}
+              src={assetUrl}
+              preload="metadata"
+            />
+          </>
         ) : (
           <div className={styles.mediaViewport}>
             <FileText size={54} color="var(--text-muted)" strokeWidth={1.5} />
@@ -319,16 +353,50 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
             </span>
           </div>
 
+          {previewInfo?.title ? (
+            <div className={styles.metaRow}>
+              <span className={styles.metaLabel}>Title</span>
+              <span className={`${styles.metaValue} fileName`} dir="ltr">
+                {previewInfo.title}
+              </span>
+            </div>
+          ) : null}
+
+          {previewInfo?.artist ? (
+            <div className={styles.metaRow}>
+              <span className={styles.metaLabel}>Artist</span>
+              <span className={styles.metaValue}>{previewInfo.artist}</span>
+            </div>
+          ) : null}
+
+          {previewInfo?.album ? (
+            <div className={styles.metaRow}>
+              <span className={styles.metaLabel}>Album</span>
+              <span className={styles.metaValue}>{previewInfo.album}</span>
+            </div>
+          ) : null}
+
           <div className={styles.metaRow}>
             <span className={styles.metaLabel}>{dict.view.type}</span>
             <span className={styles.metaValue}>
               {isDirectory
                 ? "File Folder"
+                : isAudio
+                ? `${selectedEntry.ext.toUpperCase()} Audio`
                 : selectedEntry.ext
                 ? `${selectedEntry.ext.toUpperCase()} File`
                 : "File"}
             </span>
           </div>
+
+          {(videoMeta?.duration || previewInfo?.durationSecs) ? (
+            <div className={styles.metaRow}>
+              <span className={styles.metaLabel}>Duration</span>
+              <span className={`${styles.metaValue} fileSize`} dir="ltr">
+                {formatDuration(videoMeta?.duration || previewInfo?.durationSecs)}
+              </span>
+            </div>
+          ) : null}
 
           {!isDirectory && selectedEntry.size !== undefined && (
             <div className={styles.metaRow}>
@@ -339,11 +407,25 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
             </div>
           )}
 
-          {previewInfo?.width && previewInfo?.height ? (
+          {previewInfo?.year ? (
+            <div className={styles.metaRow}>
+              <span className={styles.metaLabel}>Year</span>
+              <span className={styles.metaValue}>{previewInfo.year}</span>
+            </div>
+          ) : null}
+
+          {previewInfo?.genre ? (
+            <div className={styles.metaRow}>
+              <span className={styles.metaLabel}>Genre</span>
+              <span className={styles.metaValue}>{previewInfo.genre}</span>
+            </div>
+          ) : null}
+
+          {(videoMeta?.width || previewInfo?.width) && (videoMeta?.height || previewInfo?.height) && !isAudio ? (
             <div className={styles.metaRow}>
               <span className={styles.metaLabel}>{dict.view.dimensions}</span>
               <span className={`${styles.metaValue} fileSize`} dir="ltr">
-                {previewInfo.width} × {previewInfo.height} px
+                {(videoMeta?.width || previewInfo?.width)} × {(videoMeta?.height || previewInfo?.height)} px
               </span>
             </div>
           ) : null}

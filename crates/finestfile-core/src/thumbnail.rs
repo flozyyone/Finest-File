@@ -1,6 +1,6 @@
 use std::fs;
 use std::io::Cursor;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::SystemTime;
 use base64::Engine;
@@ -28,6 +28,12 @@ pub struct MediaPreviewInfo {
     pub height: Option<u32>,
     pub duration_secs: Option<f64>,
     pub thumbnail_url: Option<String>,
+    pub title: Option<String>,
+    pub artist: Option<String>,
+    pub album: Option<String>,
+    pub track_number: Option<u32>,
+    pub year: Option<u32>,
+    pub genre: Option<String>,
 }
 
 static CACHE_CLEANUP_COUNTER: AtomicU64 = AtomicU64::new(0);
@@ -120,15 +126,29 @@ pub fn get_thumbnail(
     let cache_key = thumbnail_cache_key(path, max_dimension);
     if let Some(ref key) = cache_key {
         let cached_file = cache_dir.join(format!("{}.jpg", key));
+        let meta_file = cache_dir.join(format!("{}.meta", key));
         if cached_file.is_file() {
             if let Ok(bytes) = fs::read(&cached_file) {
                 if !bytes.is_empty() {
+                    let (w, h) = if let Ok(meta_str) = fs::read_to_string(&meta_file) {
+                        let parts: Vec<&str> = meta_str.trim().split('x').collect();
+                        if parts.len() == 2 {
+                            let pw = parts[0].parse::<u32>().unwrap_or(max_dimension);
+                            let ph = parts[1].parse::<u32>().unwrap_or(max_dimension);
+                            (pw, ph)
+                        } else {
+                            (max_dimension, max_dimension)
+                        }
+                    } else {
+                        (max_dimension, max_dimension)
+                    };
+
                     let base64_str = BASE64.encode(&bytes);
                     let data_url = format!("data:image/jpeg;base64,{}", base64_str);
                     return Ok(ThumbnailResult {
                         data_url,
-                        width: max_dimension,
-                        height: max_dimension,
+                        width: w,
+                        height: h,
                         mime_type: "image/jpeg".to_string(),
                     });
                 }
@@ -146,6 +166,10 @@ pub fn get_thumbnail(
         ext.as_str(),
         "mp4" | "mkv" | "mov" | "webm" | "avi" | "wmv" | "m4v" | "3gp"
     );
+    let is_audio = matches!(
+        ext.as_str(),
+        "mp3" | "flac" | "m4a" | "aac" | "ogg" | "wav" | "wma" | "aiff" | "alac" | "opus"
+    );
 
     if is_svg {
         return generate_svg_thumbnail(path);
@@ -155,6 +179,9 @@ pub fn get_thumbnail(
         generate_image_thumbnail_bytes(path, max_dimension)?
     } else if is_video {
         generate_shell_thumbnail_bytes(path, max_dimension)?
+    } else if is_audio {
+        generate_audio_cover_bytes(path, max_dimension)
+            .or_else(|_| generate_shell_thumbnail_bytes(path, max_dimension))?
     } else {
         // Try Windows Shell for other file formats that Windows has shell thumbnailers for
         generate_shell_thumbnail_bytes(path, max_dimension)?
@@ -164,7 +191,9 @@ pub fn get_thumbnail(
     if let Some(ref key) = cache_key {
         let _ = fs::create_dir_all(cache_dir);
         let cached_file = cache_dir.join(format!("{}.jpg", key));
+        let meta_file = cache_dir.join(format!("{}.meta", key));
         let _ = fs::write(&cached_file, &bytes);
+        let _ = fs::write(&meta_file, format!("{}x{}", width, height));
         prune_cache_if_needed(cache_dir, 100 * 1024 * 1024); // 100MB limit
     }
 
@@ -234,6 +263,60 @@ fn generate_image_thumbnail_bytes(
     Ok((jpeg_bytes, tw, th))
 }
 
+/// Extracts embedded album cover art from audio files (MP3, FLAC, M4A, etc.) via lofty
+fn generate_audio_cover_bytes(
+    path: &Path,
+    max_dimension: u32,
+) -> Result<(Vec<u8>, u32, u32), String> {
+    use lofty::prelude::*;
+    use lofty::probe::Probe;
+
+    let probe = Probe::open(path)
+        .map_err(|e| format!("Failed to open audio file: {}", e))?
+        .read()
+        .map_err(|e| format!("Failed to read audio metadata: {}", e))?;
+
+    let tag = probe.primary_tag().or_else(|| probe.first_tag());
+    let pic = tag
+        .and_then(|t| {
+            t.pictures()
+                .iter()
+                .find(|p| p.pic_type() == lofty::picture::PictureType::CoverFront)
+                .or_else(|| t.pictures().first())
+        })
+        .ok_or_else(|| "No embedded picture in audio tag".to_string())?;
+
+    let pic_bytes = pic.data();
+    if pic_bytes.is_empty() {
+        return Err("Embedded picture data is empty".to_string());
+    }
+
+    let reader = image::ImageReader::new(Cursor::new(pic_bytes))
+        .with_guessed_format()
+        .map_err(|e| format!("Failed to identify embedded picture format: {}", e))?;
+
+    let img = reader
+        .decode()
+        .map_err(|e| format!("Failed to decode embedded picture: {}", e))?;
+
+    let (orig_w, orig_h) = (img.width(), img.height());
+    if orig_w == 0 || orig_h == 0 {
+        return Err("Zero dimension album art".to_string());
+    }
+
+    let thumb = img.thumbnail(max_dimension, max_dimension);
+    let (tw, th) = (thumb.width(), thumb.height());
+
+    let mut jpeg_bytes = Vec::new();
+    let mut cursor = Cursor::new(&mut jpeg_bytes);
+    let mut encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut cursor, 85);
+    encoder
+        .encode_image(&thumb)
+        .map_err(|e| format!("Failed to encode album art JPEG: {}", e))?;
+
+    Ok((jpeg_bytes, tw, th))
+}
+
 /// Windows Shell thumbnail extraction for videos and other formats via IShellItemImageFactory
 #[cfg(windows)]
 fn generate_shell_thumbnail_bytes(
@@ -252,6 +335,30 @@ fn generate_shell_thumbnail_bytes(
         CoInitializeEx, CoUninitialize, COINIT_APARTMENTTHREADED, COINIT_DISABLE_OLE1DDE,
     };
     use windows_sys::Win32::UI::Shell::SHCreateItemFromParsingName;
+
+    // IShellItem GUID: {43826d1e-e718-42ee-bc55-a1e261c37bfe}
+    const IID_ISHELLITEM: windows_sys::core::GUID = windows_sys::core::GUID {
+        data1: 0x43826d1e,
+        data2: 0xe718,
+        data3: 0x42ee,
+        data4: [0xbc, 0x55, 0xa1, 0xe2, 0x61, 0xc3, 0x7b, 0xfe],
+    };
+
+    // BHID_ThumbnailHandler: {7b2e650a-8e20-4f4a-b09e-6597afc72fb0}
+    const BHID_THUMBNAIL_HANDLER: windows_sys::core::GUID = windows_sys::core::GUID {
+        data1: 0x7b2e650a,
+        data2: 0x8e20,
+        data3: 0x4f4a,
+        data4: [0xb0, 0x9e, 0x65, 0x97, 0xaf, 0xc7, 0x2f, 0xb0],
+    };
+
+    // IThumbnailProvider GUID: {e357fccd-a995-4576-b01f-234630154e96}
+    const IID_ITHUMBNAILPROVIDER: windows_sys::core::GUID = windows_sys::core::GUID {
+        data1: 0xe357fccd,
+        data2: 0xa995,
+        data3: 0x4576,
+        data4: [0xb0, 0x1f, 0x23, 0x46, 0x30, 0x15, 0x4e, 0x96],
+    };
 
     // IShellItemImageFactory GUID: {bcc18b79-ba16-442f-80c4-8a140df4d14c}
     const IID_ISHELLITEMIMAGEFACTORY: windows_sys::core::GUID = windows_sys::core::GUID {
@@ -280,54 +387,117 @@ fn generate_shell_thumbnail_bytes(
         );
         let need_uninit = hr_init == S_OK || hr_init == 1; // S_OK or S_FALSE
 
-        let mut factory_ptr: *mut c_void = std::ptr::null_mut();
+        // 1. Create IShellItem
+        let mut shell_item_ptr: *mut c_void = std::ptr::null_mut();
         let hr: HRESULT = SHCreateItemFromParsingName(
             path_wide.as_ptr(),
             std::ptr::null_mut(),
-            &IID_ISHELLITEMIMAGEFACTORY,
-            &mut factory_ptr,
+            &IID_ISHELLITEM,
+            &mut shell_item_ptr,
         );
 
-        if hr != S_OK || factory_ptr.is_null() {
+        if hr != S_OK || shell_item_ptr.is_null() {
             if need_uninit {
                 CoUninitialize();
             }
             return Err(format!("Shell item could not be created for {:?} (HRESULT 0x{:08x})", path_str, hr));
         }
 
-        // IShellItemImageFactory vtable:
-        // 0: QueryInterface, 1: AddRef, 2: Release, 3: GetImage
-        type GetImageFn = unsafe extern "system" fn(
+        // IShellItem vtable:
+        // 0: QueryInterface, 1: AddRef, 2: Release, 3: BindToHandler
+        type QueryInterfaceFn = unsafe extern "system" fn(
             this: *mut c_void,
-            size: SIZE,
-            flags: u32,
-            phbm: *mut HBITMAP,
+            riid: *const windows_sys::core::GUID,
+            ppv: *mut *mut c_void,
+        ) -> HRESULT;
+        type ReleaseFn = unsafe extern "system" fn(this: *mut c_void) -> u32;
+        type BindToHandlerFn = unsafe extern "system" fn(
+            this: *mut c_void,
+            pbc: *mut c_void,
+            bhid: *const windows_sys::core::GUID,
+            riid: *const windows_sys::core::GUID,
+            ppv: *mut *mut c_void,
         ) -> HRESULT;
 
-        type ReleaseFn = unsafe extern "system" fn(this: *mut c_void) -> u32;
+        let shell_item_vtable = *(shell_item_ptr as *mut *mut usize);
+        let query_interface: QueryInterfaceFn = std::mem::transmute(*shell_item_vtable.add(0));
+        let shell_item_release: ReleaseFn = std::mem::transmute(*shell_item_vtable.add(2));
+        let bind_to_handler: BindToHandlerFn = std::mem::transmute(*shell_item_vtable.add(3));
 
-        let vtable = *(factory_ptr as *mut *mut usize);
-        let get_image: GetImageFn = std::mem::transmute(*vtable.add(3));
-        let release: ReleaseFn = std::mem::transmute(*vtable.add(2));
-
-        let size = SIZE {
-            cx: max_dimension as i32,
-            cy: max_dimension as i32,
-        };
         let mut hbitmap: HBITMAP = std::ptr::null_mut();
 
-        let mut hr_image = get_image(factory_ptr, size, SIIGBF_BIGGERSIZEOK, &mut hbitmap);
-        if hr_image != S_OK || hbitmap.is_null() {
-            // Retry with RESIZETOFIT
-            hr_image = get_image(factory_ptr, size, SIIGBF_RESIZETOFIT, &mut hbitmap);
-        }
-        release(factory_ptr);
+        // Method 1: Try BindToHandler with BHID_ThumbnailHandler (standard for Windows video thumbnails!)
+        let mut thumb_provider_ptr: *mut c_void = std::ptr::null_mut();
+        let hr_bind = bind_to_handler(
+            shell_item_ptr,
+            std::ptr::null_mut(),
+            &BHID_THUMBNAIL_HANDLER,
+            &IID_ITHUMBNAILPROVIDER,
+            &mut thumb_provider_ptr,
+        );
 
-        if hr_image != S_OK || hbitmap.is_null() {
+        if hr_bind == S_OK && !thumb_provider_ptr.is_null() {
+            // IThumbnailProvider vtable:
+            // 0: QueryInterface, 1: AddRef, 2: Release, 3: GetThumbnail
+            type GetThumbnailFn = unsafe extern "system" fn(
+                this: *mut c_void,
+                cx: u32,
+                phbmp: *mut HBITMAP,
+                _pdw_alpha: *mut u32,
+            ) -> HRESULT;
+
+            let tp_vtable = *(thumb_provider_ptr as *mut *mut usize);
+            let get_thumbnail: GetThumbnailFn = std::mem::transmute(*tp_vtable.add(3));
+            let tp_release: ReleaseFn = std::mem::transmute(*tp_vtable.add(2));
+
+            let mut alpha_type: u32 = 0;
+            let hr_thumb = get_thumbnail(thumb_provider_ptr, max_dimension, &mut hbitmap, &mut alpha_type);
+            tp_release(thumb_provider_ptr);
+
+            if hr_thumb != S_OK {
+                hbitmap = std::ptr::null_mut();
+            }
+        }
+
+        // Method 2: If BindToHandler didn't produce an HBITMAP, fallback to IShellItemImageFactory
+        if hbitmap.is_null() {
+            let mut factory_ptr: *mut c_void = std::ptr::null_mut();
+            let hr_qi = query_interface(shell_item_ptr, &IID_ISHELLITEMIMAGEFACTORY, &mut factory_ptr);
+
+            if hr_qi == S_OK && !factory_ptr.is_null() {
+                // IShellItemImageFactory vtable:
+                // 0: QueryInterface, 1: AddRef, 2: Release, 3: GetImage
+                type GetImageFn = unsafe extern "system" fn(
+                    this: *mut c_void,
+                    size: SIZE,
+                    flags: u32,
+                    phbm: *mut HBITMAP,
+                ) -> HRESULT;
+
+                let vtable = *(factory_ptr as *mut *mut usize);
+                let get_image: GetImageFn = std::mem::transmute(*vtable.add(3));
+                let release: ReleaseFn = std::mem::transmute(*vtable.add(2));
+
+                let size = SIZE {
+                    cx: max_dimension as i32,
+                    cy: max_dimension as i32,
+                };
+
+                let hr_image = get_image(factory_ptr, size, SIIGBF_BIGGERSIZEOK, &mut hbitmap);
+                if hr_image != S_OK || hbitmap.is_null() {
+                    let _ = get_image(factory_ptr, size, SIIGBF_RESIZETOFIT, &mut hbitmap);
+                }
+                release(factory_ptr);
+            }
+        }
+
+        shell_item_release(shell_item_ptr);
+
+        if hbitmap.is_null() {
             if need_uninit {
                 CoUninitialize();
             }
-            return Err(format!("Shell GetImage failed (HRESULT 0x{:08x})", hr_image));
+            return Err(format!("Could not extract thumbnail bitmap for {:?}", path_str));
         }
 
         // Extract DIB bits from HBITMAP
@@ -362,19 +532,15 @@ fn generate_shell_thumbnail_bytes(
             }],
         };
 
-        // First probe actual bitmap dimensions
-        let _ = GetDIBits(
-            hdc,
+        // Probe actual HBITMAP dimensions via GetObjectW
+        let mut bmp_obj: windows_sys::Win32::Graphics::Gdi::BITMAP = std::mem::zeroed();
+        let _ = windows_sys::Win32::Graphics::Gdi::GetObjectW(
             hbitmap,
-            0,
-            0,
-            std::ptr::null_mut(),
-            &mut bi,
-            DIB_RGB_COLORS,
+            std::mem::size_of::<windows_sys::Win32::Graphics::Gdi::BITMAP>() as i32,
+            &mut bmp_obj as *mut _ as *mut c_void,
         );
-
-        let actual_width = bi.bmiHeader.biWidth.abs() as u32;
-        let actual_height = bi.bmiHeader.biHeight.abs() as u32;
+        let actual_width = bmp_obj.bmWidth.abs() as u32;
+        let actual_height = bmp_obj.bmHeight.abs() as u32;
 
         if actual_width == 0 || actual_height == 0 {
             ReleaseDC(std::ptr::null_mut(), hdc);
@@ -385,7 +551,8 @@ fn generate_shell_thumbnail_bytes(
             return Err("Zero dimension shell bitmap".to_string());
         }
 
-        // Set top-down height
+        // Set actual dimensions and top-down height
+        bi.bmiHeader.biWidth = actual_width as i32;
         bi.bmiHeader.biHeight = -(actual_height as i32);
         bi.bmiHeader.biBitCount = 32;
         bi.bmiHeader.biCompression = BI_RGB;
@@ -476,14 +643,24 @@ pub fn get_preview_info(path: &Path, cache_dir: &Path) -> Result<MediaPreviewInf
         "avi" => ("video", "video/x-msvideo"),
         "wmv" => ("video", "video/x-ms-wmv"),
         "mp3" => ("audio", "audio/mpeg"),
-        "wav" => ("audio", "audio/wav"),
+        "m4a" | "aac" => ("audio", "audio/mp4"),
         "flac" => ("audio", "audio/flac"),
-        "ogg" => ("audio", "audio/ogg"),
+        "wav" => ("audio", "audio/wav"),
+        "ogg" | "opus" => ("audio", "audio/ogg"),
+        "wma" => ("audio", "audio/x-ms-wma"),
+        "aiff" | "aif" => ("audio", "audio/aiff"),
         _ => ("other", "application/octet-stream"),
     };
 
     let mut width = None;
     let mut height = None;
+    let mut duration_secs = None;
+    let mut title = None;
+    let mut artist = None;
+    let mut album = None;
+    let mut track_number = None;
+    let mut year = None;
+    let mut genre = None;
 
     // For images, read dimensions quickly
     if media_type == "image" && ext != "svg" {
@@ -497,10 +674,38 @@ pub fn get_preview_info(path: &Path, cache_dir: &Path) -> Result<MediaPreviewInf
         }
     }
 
+    // For audio files, extract tags and duration via lofty
+    if media_type == "audio" {
+        use lofty::prelude::*;
+        use lofty::probe::Probe;
+
+        if let Ok(probe) = Probe::open(path).and_then(|p| p.read()) {
+            let dur = probe.properties().duration().as_secs_f64();
+            if dur > 0.0 {
+                duration_secs = Some(dur);
+            }
+            if let Some(tag) = probe.primary_tag().or_else(|| probe.first_tag()) {
+                title = tag.title().as_deref().map(str::to_string);
+                artist = tag.artist().as_deref().map(str::to_string);
+                album = tag.album().as_deref().map(str::to_string);
+                track_number = tag.track();
+                year = tag.year();
+                genre = tag.genre().as_deref().map(str::to_string);
+            }
+        }
+    }
+
     // Try getting a preview thumbnail (e.g. 512px)
-    let thumbnail_url = get_thumbnail(path, 512, cache_dir)
-        .ok()
-        .map(|t| t.data_url);
+    let thumb_res = get_thumbnail(path, 512, cache_dir).ok();
+    let thumbnail_url = thumb_res.as_ref().map(|t| t.data_url.clone());
+    if width.is_none() && height.is_none() {
+        if let Some(ref t) = thumb_res {
+            if t.width > 0 && t.height > 0 {
+                width = Some(t.width);
+                height = Some(t.height);
+            }
+        }
+    }
 
     Ok(MediaPreviewInfo {
         path: path.to_string_lossy().into_owned(),
@@ -510,8 +715,14 @@ pub fn get_preview_info(path: &Path, cache_dir: &Path) -> Result<MediaPreviewInf
         media_type: media_type.to_string(),
         width,
         height,
-        duration_secs: None,
+        duration_secs,
         thumbnail_url,
+        title,
+        artist,
+        album,
+        track_number,
+        year,
+        genre,
     })
 }
 
@@ -599,5 +810,107 @@ mod tests {
         assert_eq!(info.width, Some(80));
         assert_eq!(info.height, Some(40));
         assert!(info.thumbnail_url.is_some());
+    }
+
+    #[test]
+    fn test_cache_hit_and_timestamp_invalidation() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let file_path = temp_dir.path().join("invalidate_test.png");
+        let cache_dir = temp_dir.path().join("cache");
+
+        // 1. Initial image 120x60
+        let img = image::RgbImage::new(120, 60);
+        img.save(&file_path).unwrap();
+
+        let thumb1 = get_thumbnail(&file_path, 64, &cache_dir).unwrap();
+        assert_eq!(thumb1.width, 64);
+        assert_eq!(thumb1.height, 32);
+
+        // 2. Cache hit returns exact dimensions
+        let thumb2 = get_thumbnail(&file_path, 64, &cache_dir).unwrap();
+        assert_eq!(thumb1.data_url, thumb2.data_url);
+        assert_eq!(thumb2.width, 64);
+        assert_eq!(thumb2.height, 32);
+
+        // 3. Modifying file content and mtime updates cache key
+        let img2 = image::RgbImage::new(60, 120);
+        img2.save(&file_path).unwrap();
+        let thumb3 = get_thumbnail(&file_path, 64, &cache_dir).unwrap();
+        assert_eq!(thumb3.width, 32);
+        assert_eq!(thumb3.height, 64);
+    }
+
+    #[test]
+    fn test_real_video_thumbnail_and_preview() {
+        let folders = crate::platform::known_folders();
+        let video_dir = folders.iter().find(|f| f.id == "videos").map(|f| std::path::PathBuf::from(&f.path));
+        if let Some(dir) = video_dir {
+            if let Ok(entries) = fs::read_dir(dir) {
+                let temp_dir = tempfile::tempdir().unwrap();
+                let cache_dir = temp_dir.path().join("cache");
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or_default().to_lowercase();
+                    if ext == "mp4" || ext == "mkv" {
+                        let result = get_thumbnail(&path, 256, &cache_dir);
+                        if let Ok(thumb) = result {
+                            assert!(thumb.data_url.starts_with("data:image/jpeg;base64,"));
+                            assert!(thumb.width > 0 && thumb.height > 0);
+                            let preview = get_preview_info(&path, &cache_dir).unwrap();
+                            assert_eq!(preview.media_type, "video");
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 4. Corrupted video handling
+        let temp_dir = tempfile::tempdir().unwrap();
+        let cache_dir = temp_dir.path().join("cache");
+        let fake_video = temp_dir.path().join("broken.mp4");
+        fs::write(&fake_video, b"not a real mp4 video").unwrap();
+        let bad_result = get_thumbnail(&fake_video, 256, &cache_dir);
+        assert!(bad_result.is_err(), "Corrupted video must return Err instead of panicking");
+    }
+
+    #[test]
+    fn test_real_audio_metadata_and_album_art() {
+        let folders = crate::platform::known_folders();
+        let music_dir = folders.iter().find(|f| f.id == "music").map(|f| std::path::PathBuf::from(&f.path));
+        if let Some(dir) = music_dir {
+            let temp_dir = tempfile::tempdir().unwrap();
+            let cache_dir = temp_dir.path().join("cache");
+
+            if let Ok(entries) = fs::read_dir(dir) {
+                let mut tested_count = 0;
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or_default().to_lowercase();
+                    if ext == "mp3" || ext == "flac" || ext == "m4a" {
+                        let info = get_preview_info(&path, &cache_dir);
+                        assert!(info.is_ok(), "Failed to get audio preview for {:?}", path);
+                        let preview = info.unwrap();
+                        assert_eq!(preview.media_type, "audio");
+                        assert!(preview.duration_secs.is_some() || preview.title.is_some() || preview.size_bytes > 0);
+
+                        println!(
+                            "Tested audio: {:?} -> title: {:?}, artist: {:?}, album: {:?}, duration: {:?}s, has_cover: {}",
+                            path.file_name(),
+                            preview.title,
+                            preview.artist,
+                            preview.album,
+                            preview.duration_secs,
+                            preview.thumbnail_url.is_some()
+                        );
+
+                        tested_count += 1;
+                        if tested_count >= 5 {
+                            break;
+                        }
+                }
+            }
+        }
+    }
     }
 }

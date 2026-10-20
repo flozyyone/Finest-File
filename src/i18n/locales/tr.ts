@@ -118,6 +118,13 @@ export const tr: TranslationDictionary = {
     fileNamePlaceholder: "Yeni Metin Belgesi.txt",
     alreadyExists: "Bu klasörde aynı ada sahip bir öğe zaten mevcut.",
     invalidChars: "Dosya adları şu karakterleri içeremez: \\ / : * ? \" < > |",
+    bakItUp: "Bak-it-Up!",
+    groupTabs: "Grupla",
+    adminMode: "Yönetici Modu",
+    changeAttributes: "Öznitelikleri ve Zamanları Değiştir",
+    workspaces: "Çalışma Alanları",
+    saveWorkspace: "Çalışma Alanını Kaydet",
+    restoreWorkspace: "Çalışma Alanını Yükle",
   },
   properties: {
     title: "Özellikler",
@@ -155,6 +162,7 @@ export const tr: TranslationDictionary = {
     showExtensions: "Bilinen dosya türleri için uzantıları göster",
     confirmDelete: "Silme işlemlerinde onay iletişim kutusu göster",
     dualPane: "Çift bölmeli dosya yönetim görünümünü etkinleştir",
+    windowsExplorerMode: "Windows Gezgini Modu (Doğal Yerleşim ve Davranış)",
     colors: {
       blue: "Windows Mavisi",
       teal: "Kuzey Turkuazı",

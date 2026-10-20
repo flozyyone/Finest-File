@@ -118,6 +118,13 @@ export const ar: TranslationDictionary = {
     fileNamePlaceholder: "مستند جديد.txt",
     alreadyExists: "يوجد عنصر بهذا الاسم بالفعل في هذا المجلد.",
     invalidChars: "لا يمكن أن يحتوي اسم الملف على أي من الأحرف التالية: \\ / : * ? \" < > |",
+    bakItUp: "Bak-it-Up!",
+    groupTabs: "Grupla",
+    adminMode: "وضع المسؤول",
+    changeAttributes: "تغيير السمات والأوقات",
+    workspaces: "مساحات العمل",
+    saveWorkspace: "حفظ مساحة العمل",
+    restoreWorkspace: "استعادة مساحة العمل",
   },
   properties: {
     title: "الخصائص",
@@ -155,6 +162,7 @@ export const ar: TranslationDictionary = {
     showExtensions: "إظهار ملحقات أسماء الملفات",
     confirmDelete: "عرض مربع حوار تأكيد الحذف",
     dualPane: "تمكين تخطيط إدارة الملفات بجزء مزدوج",
+    windowsExplorerMode: "وضع مستكشف ويندوز (تخطيط وسلوك أصلي)",
     colors: {
       blue: "أزرق ويندوز",
       teal: "أخضر مزرق نورديك",

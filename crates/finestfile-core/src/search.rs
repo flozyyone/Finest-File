@@ -3,10 +3,9 @@
 use crate::error::{FsError, FsResult};
 use crate::index::IndexDb;
 use crate::model::{entry_from_metadata, EntryKind, FileEntry};
-use rusqlite::params;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

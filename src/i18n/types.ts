@@ -127,6 +127,13 @@ export interface TranslationDictionary {
     fileNamePlaceholder: string;
     alreadyExists: string;
     invalidChars: string;
+    bakItUp: string;
+    groupTabs: string;
+    adminMode: string;
+    changeAttributes: string;
+    workspaces: string;
+    saveWorkspace: string;
+    restoreWorkspace: string;
   };
   properties: {
     title: string;
@@ -164,6 +171,7 @@ export interface TranslationDictionary {
     showExtensions: string;
     confirmDelete: string;
     dualPane: string;
+    windowsExplorerMode: string;
     colors: {
       blue: string;
       teal: string;

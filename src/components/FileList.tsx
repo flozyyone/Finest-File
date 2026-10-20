@@ -1,8 +1,8 @@
-import React, { useState, useRef, useEffect } from "react";
-import { FileEntry, FileGroup, SortField, ViewPreferences } from "../types";
+import React, { useState, useRef, useEffect, useMemo } from "react";
+import { FileEntry, FileGroup, SortField, ViewPreferences, ViewMode } from "../types";
 import { FileIcon } from "./FileIcon";
 import { formatBytes } from "../utils/format";
-import { ChevronDown, ChevronRight, Film } from "lucide-react";
+import { ChevronDown, ChevronRight, Film, Music } from "lucide-react";
 import { useI18n } from "../i18n";
 import { api } from "../api";
 import { convertFileSrc } from "@tauri-apps/api/core";
@@ -16,11 +16,15 @@ const IMAGE_EXTS = new Set([
   "jpg", "jpeg", "png", "webp", "bmp", "gif", "tiff", "tif", "svg"
 ]);
 
-const THUMBNAIL_EXTS = new Set([...VIDEO_EXTS, ...IMAGE_EXTS]);
+const AUDIO_EXTS = new Set([
+  "mp3", "flac", "m4a", "aac", "ogg", "wav", "wma", "aiff", "alac", "opus"
+]);
+
+const THUMBNAIL_EXTS = new Set([...VIDEO_EXTS, ...IMAGE_EXTS, ...AUDIO_EXTS]);
 
 interface FileListProps {
   groups: FileGroup[];
-  viewMode: "details" | "grid";
+  viewMode: ViewMode;
   prefs: ViewPreferences;
   onSortChange: (field: SortField) => void;
   selectedPaths: string[];
@@ -33,6 +37,8 @@ interface FileListProps {
   showExtensions: boolean;
   showHidden: boolean;
   gridZoom?: number;
+  currentPath?: string;
+  windowsExplorerMode?: boolean;
   onZoomIn?: () => void;
   onZoomOut?: () => void;
   onGoUp?: () => void;
@@ -114,6 +120,8 @@ export const FileList: React.FC<FileListProps> = ({
   showExtensions,
   showHidden,
   gridZoom = 96,
+  currentPath,
+  windowsExplorerMode = false,
   onZoomIn,
   onZoomOut,
   onGoUp,
@@ -125,6 +133,13 @@ export const FileList: React.FC<FileListProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const loadedPathsRef = useRef<Set<string>>(new Set());
   const fetchingPathsRef = useRef<Set<string>>(new Set());
+
+  // Clear cached thumbnails when navigating to a different folder
+  useEffect(() => {
+    loadedPathsRef.current.clear();
+    fetchingPathsRef.current.clear();
+    setThumbnails({});
+  }, [currentPath]);
 
   const toggleGroup = (key: string) => {
     setCollapsedGroups((prev) => ({
@@ -141,12 +156,17 @@ export const FileList: React.FC<FileListProps> = ({
     return dotIndex > 0 ? entry.name.substring(0, dotIndex) : entry.name;
   };
 
-  const processedGroups = groups.map((g) => ({
-    ...g,
-    items: g.items.filter((item) => showHidden || !item.hidden),
-  }));
+  const processedGroups = useMemo(() => {
+    return groups.map((g) => ({
+      ...g,
+      items: g.items.filter((item) => showHidden || !item.hidden),
+    }));
+  }, [groups, showHidden]);
 
-  const allItems = processedGroups.flatMap((g) => g.items);
+  const allItems = useMemo(() => {
+    return processedGroups.flatMap((g) => g.items);
+  }, [processedGroups]);
+
   const totalItemsCount = allItems.length;
 
   useEffect(() => {
@@ -156,8 +176,9 @@ export const FileList: React.FC<FileListProps> = ({
   }, [selectedPaths]);
 
   // Fast offline thumbnail loader for media items
+  // Note: Runs for all thumbnail-capable view modes (grid, tiles, content, large/extra-large/medium icons)
   useEffect(() => {
-    if (viewMode !== "grid") return;
+    if (viewMode === "details" || viewMode === "list") return;
 
     let active = true;
     const itemsToFetch = allItems.filter(
@@ -194,59 +215,63 @@ export const FileList: React.FC<FileListProps> = ({
     }
 
     // For remaining items (videos, TIFF, etc.), query getFileThumbnail with video frame fallback
-    const batch = remainingToFetch.slice(0, 32);
-    for (const item of batch) {
-      fetchingPathsRef.current.add(item.path);
-      const isVideo = VIDEO_EXTS.has(item.ext.toLowerCase());
+    // Process smoothly in bounded concurrent chunks of 6 with batched state updates
+    let isCancelled = false;
+    (async () => {
+      for (let i = 0; i < remainingToFetch.length; i += 6) {
+        if (!active || isCancelled) break;
+        const chunk = remainingToFetch.slice(i, i + 6);
+        const chunkResults: Record<string, string> = {};
 
-      api
-        .getFileThumbnail(
-          item.path,
-          Math.min(320, Math.max(96, Math.round(gridZoom * 1.5)))
-        )
-        .then((res) => {
-          fetchingPathsRef.current.delete(item.path);
-          if (active && res?.dataUrl) {
-            loadedPathsRef.current.add(item.path);
-            setThumbnails((prev) => ({ ...prev, [item.path]: res.dataUrl }));
-          } else if (isVideo) {
-            extractVideoFrame(item.path)
-              .then((frameUrl) => {
-                if (active && frameUrl) {
-                  loadedPathsRef.current.add(item.path);
-                  setThumbnails((prev) => ({ ...prev, [item.path]: frameUrl }));
-                }
-              })
-              .catch(() => {
+        await Promise.all(
+          chunk.map(async (item) => {
+            if (!active || isCancelled) return;
+            fetchingPathsRef.current.add(item.path);
+            const isVideo = VIDEO_EXTS.has(item.ext.toLowerCase());
+
+            try {
+              const res = await api.getFileThumbnail(item.path, 256);
+              fetchingPathsRef.current.delete(item.path);
+              if (active && !isCancelled && res?.dataUrl) {
                 loadedPathsRef.current.add(item.path);
-              });
-          }
-        })
-        .catch(() => {
-          if (isVideo) {
-            extractVideoFrame(item.path)
-              .then((frameUrl) => {
+                chunkResults[item.path] = res.dataUrl;
+                return;
+              }
+            } catch {
+              // fallback below
+            }
+
+            if (isVideo) {
+              try {
+                const frameUrl = await extractVideoFrame(item.path);
                 fetchingPathsRef.current.delete(item.path);
-                if (active && frameUrl) {
+                if (active && !isCancelled && frameUrl) {
                   loadedPathsRef.current.add(item.path);
-                  setThumbnails((prev) => ({ ...prev, [item.path]: frameUrl }));
+                  chunkResults[item.path] = frameUrl;
+                  return;
                 }
-              })
-              .catch(() => {
+              } catch {
                 fetchingPathsRef.current.delete(item.path);
                 loadedPathsRef.current.add(item.path);
-              });
-          } else {
-            fetchingPathsRef.current.delete(item.path);
-            loadedPathsRef.current.add(item.path);
-          }
-        });
-    }
+              }
+            } else {
+              fetchingPathsRef.current.delete(item.path);
+              loadedPathsRef.current.add(item.path);
+            }
+          })
+        );
+
+        if (active && !isCancelled && Object.keys(chunkResults).length > 0) {
+          setThumbnails((prev) => ({ ...prev, ...chunkResults }));
+        }
+      }
+    })();
 
     return () => {
       active = false;
+      isCancelled = true;
     };
-  }, [allItems, viewMode, gridZoom]);
+  }, [allItems, viewMode]);
 
   const handleRowClick = (e: React.MouseEvent, entry: FileEntry) => {
     e.stopPropagation();
@@ -319,7 +344,14 @@ export const FileList: React.FC<FileListProps> = ({
   }
 
   const isGrouped = prefs.groupMode !== "none" && processedGroups.length > 0;
-  const iconSize = Math.max(24, Math.min(128, Math.round(gridZoom * 0.48)));
+
+  let effectiveGridZoom = gridZoom;
+  if (viewMode === "extra-large-icons") effectiveGridZoom = 256;
+  else if (viewMode === "large-icons") effectiveGridZoom = 96;
+  else if (viewMode === "medium-icons") effectiveGridZoom = 48;
+  else if (viewMode === "small-icons") effectiveGridZoom = 24;
+
+  const iconSize = Math.max(20, Math.min(128, Math.round(effectiveGridZoom * 0.48)));
   const detailsRowHeight = Math.max(26, Math.min(44, Math.round(28 + (gridZoom - 96) * 0.08)));
   const detailsIconSize = Math.max(14, Math.min(22, Math.round(16 + (gridZoom - 96) * 0.04)));
 
@@ -327,16 +359,17 @@ export const FileList: React.FC<FileListProps> = ({
     const isSelected = selectedPaths.includes(entry.path);
     const isRenaming = renamingPath === entry.path;
     const thumbUrl = thumbnails[entry.path];
-    const thumbBoxHeight = Math.max(32, Math.round(gridZoom * 0.72));
+    const thumbBoxHeight = Math.max(24, Math.round(effectiveGridZoom * 0.72));
     const isVideo = entry.kind !== "directory" && VIDEO_EXTS.has(entry.ext.toLowerCase());
     const isImage = entry.kind !== "directory" && IMAGE_EXTS.has(entry.ext.toLowerCase());
-    const filmstripWidth = Math.min(gridZoom - 6, Math.round(thumbBoxHeight * 1.38));
+    const isAudio = entry.kind !== "directory" && AUDIO_EXTS.has(entry.ext.toLowerCase());
+    const filmstripWidth = Math.min(effectiveGridZoom - 6, Math.round(thumbBoxHeight * 1.38));
 
     return (
       <div
         key={entry.path}
         className={`${styles.gridItem} ${isSelected ? styles.selected : ""}`}
-        style={{ height: `${gridZoom + 30}px`, minHeight: `${gridZoom + 30}px` }}
+        style={{ height: `${effectiveGridZoom + 30}px`, minHeight: `${effectiveGridZoom + 30}px` }}
         onClick={(e) => handleRowClick(e, entry)}
         onDoubleClick={() => onOpen(entry)}
         onContextMenu={(e) => {
@@ -351,27 +384,13 @@ export const FileList: React.FC<FileListProps> = ({
           style={{ width: "100%", height: `${thumbBoxHeight}px` }}
         >
           {isVideo ? (
-            <div
-              className={styles.videoFilmstrip}
-              style={{
-                width: `${filmstripWidth}px`,
-                maxWidth: "100%",
-                height: `${thumbBoxHeight}px`,
-              }}
-            >
-              <div className={styles.sprocketColumn}>
-                <div className={styles.sprocketHole} />
-                <div className={styles.sprocketHole} />
-                <div className={styles.sprocketHole} />
-                <div className={styles.sprocketHole} />
-              </div>
-
-              <div className={styles.videoPosterBox}>
+            windowsExplorerMode ? (
+              <div className={styles.cleanVideoPoster}>
                 {thumbUrl ? (
                   <img
                     src={thumbUrl}
                     alt={entry.name}
-                    className={styles.videoPosterImg}
+                    className={styles.cleanVideoImg}
                   />
                 ) : (
                   <Film size={Math.max(16, Math.round(iconSize * 0.5))} color="#8a8a8a" />
@@ -380,21 +399,71 @@ export const FileList: React.FC<FileListProps> = ({
                   <Film size={10} color="#ffffff" />
                 </div>
               </div>
+            ) : (
+              <div
+                className={styles.videoFilmstrip}
+                style={{
+                  width: `${filmstripWidth}px`,
+                  maxWidth: "100%",
+                  height: `${thumbBoxHeight}px`,
+                }}
+              >
+                <div className={styles.sprocketColumn}>
+                  <div className={styles.sprocketHole} />
+                  <div className={styles.sprocketHole} />
+                  <div className={styles.sprocketHole} />
+                  <div className={styles.sprocketHole} />
+                </div>
 
-              <div className={styles.sprocketColumn}>
-                <div className={styles.sprocketHole} />
-                <div className={styles.sprocketHole} />
-                <div className={styles.sprocketHole} />
-                <div className={styles.sprocketHole} />
+                <div className={styles.videoPosterBox}>
+                  {thumbUrl ? (
+                    <img
+                      src={thumbUrl}
+                      alt={entry.name}
+                      className={styles.videoPosterImg}
+                    />
+                  ) : (
+                    <Film size={Math.max(16, Math.round(iconSize * 0.5))} color="#8a8a8a" />
+                  )}
+                  <div className={styles.videoBadge} title="Video">
+                    <Film size={10} color="#ffffff" />
+                  </div>
+                </div>
+
+                <div className={styles.sprocketColumn}>
+                  <div className={styles.sprocketHole} />
+                  <div className={styles.sprocketHole} />
+                  <div className={styles.sprocketHole} />
+                  <div className={styles.sprocketHole} />
+                </div>
               </div>
-            </div>
+            )
           ) : isImage && thumbUrl ? (
             <img
               src={thumbUrl}
               alt={entry.name}
               className={styles.thumbnailImg}
               loading="lazy"
+              onError={() => {
+                setThumbnails((prev) => {
+                  const copy = { ...prev };
+                  delete copy[entry.path];
+                  return copy;
+                });
+              }}
             />
+          ) : isAudio && thumbUrl ? (
+            <div className={styles.cleanVideoPoster}>
+              <img
+                src={thumbUrl}
+                alt={entry.name}
+                className={styles.cleanVideoImg}
+                loading="lazy"
+              />
+              <div className={styles.videoBadge} title="Music">
+                <Music size={10} color="#ffffff" />
+              </div>
+            </div>
           ) : (
             <FileIcon kind={entry.kind} ext={entry.ext} size={iconSize} />
           )}
@@ -427,6 +496,190 @@ export const FileList: React.FC<FileListProps> = ({
             {renderDisplayName(entry)}
           </span>
         )}
+      </div>
+    );
+  };
+
+  const renderTileItem = (entry: FileEntry) => {
+    const isSelected = selectedPaths.includes(entry.path);
+    const isRenaming = renamingPath === entry.path;
+    const thumbUrl = thumbnails[entry.path];
+    const isVideo = entry.kind !== "directory" && VIDEO_EXTS.has(entry.ext.toLowerCase());
+    const isImage = entry.kind !== "directory" && IMAGE_EXTS.has(entry.ext.toLowerCase());
+    const isAudio = entry.kind !== "directory" && AUDIO_EXTS.has(entry.ext.toLowerCase());
+
+    return (
+      <div
+        key={entry.path}
+        className={`${styles.tileItem} ${isSelected ? styles.selected : ""}`}
+        onClick={(e) => handleRowClick(e, entry)}
+        onDoubleClick={() => onOpen(entry)}
+        onContextMenu={(e) => {
+          e.stopPropagation();
+          if (!isSelected) onSelect(entry, false, false);
+          onContextMenu(e, entry);
+        }}
+        title={entry.name}
+      >
+        <div className={styles.tileIcon}>
+          {isVideo && thumbUrl ? (
+            <div className={styles.cleanVideoPoster}>
+              <img src={thumbUrl} alt={entry.name} className={styles.cleanVideoImg} />
+              <div className={styles.videoBadge}>
+                <Film size={9} color="#ffffff" />
+              </div>
+            </div>
+          ) : isAudio && thumbUrl ? (
+            <div className={styles.cleanVideoPoster}>
+              <img src={thumbUrl} alt={entry.name} className={styles.cleanVideoImg} />
+              <div className={styles.videoBadge}>
+                <Music size={9} color="#ffffff" />
+              </div>
+            </div>
+          ) : isImage && thumbUrl ? (
+            <img src={thumbUrl} alt={entry.name} className={styles.thumbnailImg} />
+          ) : (
+            <FileIcon kind={entry.kind} ext={entry.ext} size={36} />
+          )}
+        </div>
+
+        <div className={styles.tileText}>
+          {isRenaming ? (
+            <input
+              type="text"
+              className={`${styles.inlineRenameInput} fileName`}
+              defaultValue={entry.name}
+              autoFocus
+              dir="ltr"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") onRenameSubmit(e.currentTarget.value);
+                if (e.key === "Escape") onRenameCancel();
+              }}
+              onBlur={(e) => onRenameSubmit(e.currentTarget.value)}
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <span className={`${styles.tileName} fileName`} dir="ltr">
+              {renderDisplayName(entry)}
+            </span>
+          )}
+          <span className={styles.tileDetails}>
+            {entry.kind === "directory"
+              ? "File folder"
+              : `${formatBytes(entry.size)} • ${entry.ext.toUpperCase() || "File"}`}
+          </span>
+        </div>
+      </div>
+    );
+  };
+
+  const renderListItem = (entry: FileEntry) => {
+    const isSelected = selectedPaths.includes(entry.path);
+    const isRenaming = renamingPath === entry.path;
+
+    return (
+      <div
+        key={entry.path}
+        className={`${styles.listItem} ${isSelected ? styles.selected : ""}`}
+        onClick={(e) => handleRowClick(e, entry)}
+        onDoubleClick={() => onOpen(entry)}
+        onContextMenu={(e) => {
+          e.stopPropagation();
+          if (!isSelected) onSelect(entry, false, false);
+          onContextMenu(e, entry);
+        }}
+        title={entry.name}
+      >
+        <FileIcon kind={entry.kind} ext={entry.ext} size={16} />
+        {isRenaming ? (
+          <input
+            type="text"
+            className={`${styles.inlineRenameInput} fileName`}
+            defaultValue={entry.name}
+            autoFocus
+            dir="ltr"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") onRenameSubmit(e.currentTarget.value);
+              if (e.key === "Escape") onRenameCancel();
+            }}
+            onBlur={(e) => onRenameSubmit(e.currentTarget.value)}
+            onClick={(e) => e.stopPropagation()}
+          />
+        ) : (
+          <span className={`${styles.listName} fileName`} dir="ltr">
+            {renderDisplayName(entry)}
+          </span>
+        )}
+      </div>
+    );
+  };
+
+  const renderContentItem = (entry: FileEntry) => {
+    const isSelected = selectedPaths.includes(entry.path);
+    const isRenaming = renamingPath === entry.path;
+    const thumbUrl = thumbnails[entry.path];
+    const isVideo = entry.kind !== "directory" && VIDEO_EXTS.has(entry.ext.toLowerCase());
+    const isImage = entry.kind !== "directory" && IMAGE_EXTS.has(entry.ext.toLowerCase());
+    const isAudio = entry.kind !== "directory" && AUDIO_EXTS.has(entry.ext.toLowerCase());
+
+    return (
+      <div
+        key={entry.path}
+        className={`${styles.contentItem} ${isSelected ? styles.selected : ""}`}
+        onClick={(e) => handleRowClick(e, entry)}
+        onDoubleClick={() => onOpen(entry)}
+        onContextMenu={(e) => {
+          e.stopPropagation();
+          if (!isSelected) onSelect(entry, false, false);
+          onContextMenu(e, entry);
+        }}
+        title={entry.name}
+      >
+        <div className={styles.contentIcon}>
+          {isVideo && thumbUrl ? (
+            <div className={styles.cleanVideoPoster}>
+              <img src={thumbUrl} alt={entry.name} className={styles.cleanVideoImg} />
+            </div>
+          ) : isAudio && thumbUrl ? (
+            <div className={styles.cleanVideoPoster}>
+              <img src={thumbUrl} alt={entry.name} className={styles.cleanVideoImg} />
+            </div>
+          ) : isImage && thumbUrl ? (
+            <img src={thumbUrl} alt={entry.name} className={styles.thumbnailImg} />
+          ) : (
+            <FileIcon kind={entry.kind} ext={entry.ext} size={28} />
+          )}
+        </div>
+
+        <div className={styles.contentMetaList}>
+          {isRenaming ? (
+            <input
+              type="text"
+              className={`${styles.inlineRenameInput} fileName`}
+              defaultValue={entry.name}
+              autoFocus
+              dir="ltr"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") onRenameSubmit(e.currentTarget.value);
+                if (e.key === "Escape") onRenameCancel();
+              }}
+              onBlur={(e) => onRenameSubmit(e.currentTarget.value)}
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <span className={`${styles.contentTitle} fileName`} dir="ltr">
+              {renderDisplayName(entry)}
+            </span>
+          )}
+          <span className={styles.contentMetaRow}>
+            {entry.modified ? formatDateTime(entry.modified) : "—"}
+          </span>
+          <span className={`${styles.contentMetaRow} fileSize`}>
+            {entry.kind === "directory"
+              ? "File folder"
+              : `${formatBytes(entry.size)} • ${entry.ext.toUpperCase() || "File"}`}
+          </span>
+        </div>
       </div>
     );
   };
@@ -504,14 +757,6 @@ export const FileList: React.FC<FileListProps> = ({
       tabIndex={0}
       onKeyDown={handleKeyDown}
       onContextMenu={(e) => onContextMenu(e)}
-      onWheel={(e) => {
-        if (e.ctrlKey) {
-          e.preventDefault();
-          e.stopPropagation();
-          if (e.deltaY < 0) onZoomIn?.();
-          else if (e.deltaY > 0) onZoomOut?.();
-        }
-      }}
     >
       {/* Details View Header */}
       {viewMode === "details" && (
@@ -605,19 +850,31 @@ export const FileList: React.FC<FileListProps> = ({
               {/* Group Items */}
               {!isCollapsed && (
                 <>
-                  {viewMode === "grid" ? (
+                  {viewMode === "details" ? (
+                    <div className={styles.rowsSubContainer}>
+                      {group.items.map((entry) => renderDetailRow(entry))}
+                    </div>
+                  ) : viewMode === "tiles" ? (
+                    <div className={styles.tilesSubContainer}>
+                      {group.items.map((entry) => renderTileItem(entry))}
+                    </div>
+                  ) : viewMode === "list" ? (
+                    <div className={styles.listSubContainer}>
+                      {group.items.map((entry) => renderListItem(entry))}
+                    </div>
+                  ) : viewMode === "content" ? (
+                    <div className={styles.contentSubContainer}>
+                      {group.items.map((entry) => renderContentItem(entry))}
+                    </div>
+                  ) : (
                     <div
                       className={styles.gridSubContainer}
                       style={{
-                        gridTemplateColumns: `repeat(auto-fill, minmax(${gridZoom}px, 1fr))`,
-                        gridAutoRows: `${gridZoom + 30}px`,
+                        gridTemplateColumns: `repeat(auto-fill, minmax(${effectiveGridZoom}px, 1fr))`,
+                        gridAutoRows: `${effectiveGridZoom + 30}px`,
                       }}
                     >
                       {group.items.map((entry) => renderGridItem(entry))}
-                    </div>
-                  ) : (
-                    <div className={styles.rowsSubContainer}>
-                      {group.items.map((entry) => renderDetailRow(entry))}
                     </div>
                   )}
                 </>

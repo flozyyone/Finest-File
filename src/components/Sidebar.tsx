@@ -11,6 +11,7 @@ import {
   Settings,
   Activity,
   Keyboard,
+  ExternalLink,
 } from "lucide-react";
 import { DriveInfo, KnownFolder } from "../types";
 import { formatBytes } from "../utils/format";
@@ -25,6 +26,7 @@ interface SidebarProps {
   onOpenSettings: () => void;
   onOpenJobs: () => void;
   onOpenShortcuts?: () => void;
+  onOpenInExplorer?: () => void;
   activeJobCount: number;
 }
 
@@ -36,6 +38,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenSettings,
   onOpenJobs,
   onOpenShortcuts,
+  onOpenInExplorer,
   activeJobCount,
 }) => {
   const { dict } = useI18n();
@@ -161,6 +164,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button className={styles.footerBtn} onClick={onOpenShortcuts} title={dict.shortcuts.title}>
             <Keyboard size={16} />
             <span>{dict.common.properties === "Properties" ? "Shortcuts" : dict.view.keyboardShortcuts}</span>
+          </button>
+        )}
+        {onOpenInExplorer && (
+          <button className={styles.footerBtn} onClick={onOpenInExplorer} title="Open in Windows File Explorer">
+            <ExternalLink size={16} />
+            <span>Explorer</span>
           </button>
         )}
         <button className={styles.footerBtn} onClick={onOpenSettings} title={dict.settings.title}>

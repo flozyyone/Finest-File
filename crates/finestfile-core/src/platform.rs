@@ -40,6 +40,25 @@ pub struct KnownFolder {
     pub path: String,
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileAttributesUpdate {
+    pub path: String,
+    pub readonly: Option<bool>,
+    pub hidden: Option<bool>,
+    pub system: Option<bool>,
+    pub archive: Option<bool>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileTimesUpdate {
+    pub path: String,
+    pub created_ms: Option<i64>,
+    pub modified_ms: Option<i64>,
+    pub accessed_ms: Option<i64>,
+}
+
 #[cfg(windows)]
 mod win {
     use super::*;
@@ -226,10 +245,102 @@ mod win {
         });
         handle.join().unwrap_or_else(|_| Err(FsError::new(ErrorCode::Io, "Properties dialog failed.")))
     }
+
+    pub fn set_file_attributes(update: &FileAttributesUpdate) -> FsResult<()> {
+        let p = Path::new(&update.path);
+        let wide_path = wide(maybe_verbatim(p).as_os_str());
+        let current_raw = unsafe { windows_sys::Win32::Storage::FileSystem::GetFileAttributesW(wide_path.as_ptr()) };
+        if current_raw == windows_sys::Win32::Storage::FileSystem::INVALID_FILE_ATTRIBUTES {
+            return Err(FsError::io(std::io::Error::last_os_error(), p));
+        }
+
+        let mut attrs = current_raw;
+        const FILE_ATTRIBUTE_READONLY: u32 = 0x00000001;
+        const FILE_ATTRIBUTE_HIDDEN: u32 = 0x00000002;
+        const FILE_ATTRIBUTE_SYSTEM: u32 = 0x00000004;
+        const FILE_ATTRIBUTE_ARCHIVE: u32 = 0x00000020;
+
+        if let Some(ro) = update.readonly {
+            if ro { attrs |= FILE_ATTRIBUTE_READONLY; } else { attrs &= !FILE_ATTRIBUTE_READONLY; }
+        }
+        if let Some(h) = update.hidden {
+            if h { attrs |= FILE_ATTRIBUTE_HIDDEN; } else { attrs &= !FILE_ATTRIBUTE_HIDDEN; }
+        }
+        if let Some(s) = update.system {
+            if s { attrs |= FILE_ATTRIBUTE_SYSTEM; } else { attrs &= !FILE_ATTRIBUTE_SYSTEM; }
+        }
+        if let Some(a) = update.archive {
+            if a { attrs |= FILE_ATTRIBUTE_ARCHIVE; } else { attrs &= !FILE_ATTRIBUTE_ARCHIVE; }
+        }
+
+        let ok = unsafe { windows_sys::Win32::Storage::FileSystem::SetFileAttributesW(wide_path.as_ptr(), attrs) };
+        if ok == 0 {
+            return Err(FsError::io(std::io::Error::last_os_error(), p));
+        }
+        Ok(())
+    }
+
+    pub fn set_file_times(update: &FileTimesUpdate) -> FsResult<()> {
+        use std::fs::OpenOptions;
+        use std::os::windows::fs::OpenOptionsExt;
+        use std::os::windows::io::AsRawHandle;
+
+        let p = Path::new(&update.path);
+        let is_dir = p.is_dir();
+        // FILE_FLAG_BACKUP_SEMANTICS (0x02000000) allows opening directories for handle manipulation
+        let mut opts = OpenOptions::new();
+        opts.write(true);
+        if is_dir {
+            opts.custom_flags(0x02000000);
+        }
+
+        let file = opts.open(p).map_err(|e| FsError::io(e, p))?;
+        let handle = file.as_raw_handle() as windows_sys::Win32::Foundation::HANDLE;
+
+        fn ms_to_filetime(ms: i64) -> windows_sys::Win32::Foundation::FILETIME {
+            // Windows FILETIME counts 100-nanosecond intervals since January 1, 1601 (UTC)
+            // 11644473600 seconds between 1601 and 1970
+            let intervals = (ms as u64 + 11_644_473_600_000) * 10_000;
+            windows_sys::Win32::Foundation::FILETIME {
+                dwLowDateTime: intervals as u32,
+                dwHighDateTime: (intervals >> 32) as u32,
+            }
+        }
+
+        let c_ft = update.created_ms.map(ms_to_filetime);
+        let a_ft = update.accessed_ms.map(ms_to_filetime);
+        let m_ft = update.modified_ms.map(ms_to_filetime);
+
+        let lp_created = c_ft.as_ref().map(|f| f as *const _).unwrap_or(null());
+        let lp_accessed = a_ft.as_ref().map(|f| f as *const _).unwrap_or(null());
+        let lp_modified = m_ft.as_ref().map(|f| f as *const _).unwrap_or(null());
+
+        let ok = unsafe {
+            windows_sys::Win32::Storage::FileSystem::SetFileTime(
+                handle,
+                lp_created,
+                lp_accessed,
+                lp_modified,
+            )
+        };
+
+        if ok == 0 {
+            return Err(FsError::io(std::io::Error::last_os_error(), p));
+        }
+        Ok(())
+    }
+
+    pub fn elevate_application() -> FsResult<()> {
+        let current_exe = std::env::current_exe().map_err(|e| FsError::new(ErrorCode::Io, e.to_string()))?;
+        shell_execute("runas", &current_exe, false)
+    }
 }
 
 #[cfg(windows)]
-pub use win::{drives, known_folders, move_no_replace, open_default, open_with, show_properties};
+pub use win::{
+    drives, known_folders, move_no_replace, open_default, open_with, show_properties,
+    set_file_attributes, set_file_times, elevate_application,
+};
 
 #[cfg(not(windows))]
 mod other {
@@ -255,6 +366,15 @@ mod other {
         Err(FsError::new(ErrorCode::Unsupported, "Not supported on this platform"))
     }
     pub fn show_properties(_p: &Path) -> FsResult<()> {
+        Err(FsError::new(ErrorCode::Unsupported, "Not supported on this platform"))
+    }
+    pub fn set_file_attributes(_update: &FileAttributesUpdate) -> FsResult<()> {
+        Err(FsError::new(ErrorCode::Unsupported, "Not supported on this platform"))
+    }
+    pub fn set_file_times(_update: &FileTimesUpdate) -> FsResult<()> {
+        Err(FsError::new(ErrorCode::Unsupported, "Not supported on this platform"))
+    }
+    pub fn elevate_application() -> FsResult<()> {
         Err(FsError::new(ErrorCode::Unsupported, "Not supported on this platform"))
     }
 }

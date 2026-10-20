@@ -124,6 +124,7 @@
   cursor: pointer;
   border-radius: var(--radius-sm);
   margin: 0 6px;
+  position: relative;
 }
 
 .row:hover {
@@ -132,6 +133,17 @@
 
 .row.selected {
   background-color: var(--bg-selected);
+}
+
+.row.selected::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  background-color: var(--accent);
+  border-radius: 2px;
 }
 
 .cell {
@@ -341,3 +353,208 @@
   color: var(--text-subtle);
   font-size: 13px;
 }
+
+/* ==========================================================================
+   Tiles View (Windows 11 Explorer authentic 2-line layout)
+   ========================================================================== */
+.tilesSubContainer {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 6px;
+  padding: 8px 12px 14px 12px;
+}
+
+.tileItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  background-color: transparent;
+  border: 1px solid transparent;
+  min-height: 56px;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.tileItem:hover {
+  background-color: var(--bg-hover);
+}
+
+.tileItem.selected {
+  background-color: var(--bg-selected);
+  border-color: var(--border-subtle);
+}
+
+.tileIcon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+  border-radius: 3px;
+}
+
+.tileText {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+  min-width: 0;
+  gap: 2px;
+  flex: 1;
+}
+
+.tileName {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tileDetails {
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   List View (Windows 11 Explorer compact multi-row / column list)
+   ========================================================================== */
+.listSubContainer {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 2px 8px;
+  padding: 6px 12px;
+}
+
+.listItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  border: 1px solid transparent;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.listItem:hover {
+  background-color: var(--bg-hover);
+}
+
+.listItem.selected {
+  background-color: var(--bg-selected);
+  border-color: var(--border-subtle);
+}
+
+.listName {
+  font-size: 12.5px;
+  color: var(--text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+/* ==========================================================================
+   Content View (Windows 11 Explorer multi-line metadata card)
+   ========================================================================== */
+.contentSubContainer {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+.contentItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  border: 1px solid transparent;
+  min-height: 64px;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.contentItem:hover {
+  background-color: var(--bg-hover);
+}
+
+.contentItem.selected {
+  background-color: var(--bg-selected);
+  border-color: var(--border-subtle);
+}
+
+.contentIcon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 3px;
+}
+
+.contentMetaList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow: hidden;
+  flex: 1;
+}
+
+.contentTitle {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contentMetaRow {
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Clean Video Thumbnail (Windows Explorer Mode without sprockets) */
+.cleanVideoPoster {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #1a1a1a;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+.cleanVideoImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+

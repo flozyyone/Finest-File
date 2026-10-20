@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { List, LayoutGrid } from "lucide-react";
 import { api } from "./api";
 import { ViewToolbar } from "./components/ViewToolbar";
 import {
@@ -10,6 +11,7 @@ import {
   AppSettings,
   JobProgress,
   IndexStatus,
+  ViewMode,
 } from "./types";
 import { Sidebar } from "./components/Sidebar";
 import { TabBar, TabItem } from "./components/TabBar";
@@ -21,8 +23,13 @@ import { SettingsModal } from "./components/SettingsModal";
 import { ShortcutModal } from "./components/ShortcutModal";
 import { PreviewPane } from "./components/PreviewPane";
 import { QuickPreviewModal } from "./components/QuickPreviewModal";
+import { BakItUpModal } from "./components/BakItUpModal";
+import { AttributesModal } from "./components/AttributesModal";
+import { WorkspaceModal } from "./components/WorkspaceModal";
+import { Workspace } from "./types";
 import { isInputFocused, matchesShortcutId } from "./shortcuts/registry";
 import { undoStack } from "./utils/undoStack";
+import { formatBytes } from "./utils/format";
 import { I18nProvider, detectInitialLanguage, getLanguageInfo, getDictionary } from "./i18n";
 import type { SupportedLanguage } from "./i18n/types";
 import styles from "./App.module.css";
@@ -80,7 +87,7 @@ export const App: React.FC = () => {
   const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<"details" | "grid">("details");
+  const [viewMode, setViewMode] = useState<ViewMode>("details");
 
   // Clipboard for cut/copy
   const [clipboard, setClipboard] = useState<{
@@ -109,43 +116,88 @@ export const App: React.FC = () => {
   const [gridZoom, setGridZoom] = useState(96);
   const [previewPaneOpen, setPreviewPaneOpen] = useState(false);
   const [quickPreviewPath, setQuickPreviewPath] = useState<string | null>(null);
+  const [isBakItUpOpen, setIsBakItUpOpen] = useState(false);
+  const [isAttributesOpen, setIsAttributesOpen] = useState(false);
+  const [isWorkspacesOpen, setIsWorkspacesOpen] = useState(false);
 
   const MIN_ZOOM = 32;
   const MAX_ZOOM = 320;
   const DEFAULT_ZOOM = 96;
   const ZOOM_STEP = 16;
+  // Discrete zoom steps matching Windows File Explorer
+  const EXPLORER_STEPS = [48, 72, 96, 128, 192, 256];
 
   const handleZoomIn = useCallback(() => {
-    setViewMode("grid");
-    setGridZoom((z) => {
-      const clamped = Math.min(MAX_ZOOM, z + ZOOM_STEP);
-      setSettings((s) => {
-        const newSettings = { ...s, gridPixelSize: clamped, defaultViewMode: "grid" as const };
-        api.updateSettings(newSettings).catch(console.error);
-        return newSettings;
+    setSettings((s) => {
+      if (s.windowsExplorerMode) {
+        setViewMode((current) => {
+          let nextMode: ViewMode = current;
+          if (current === "details") nextMode = "list";
+          else if (current === "list") nextMode = "tiles";
+          else if (current === "tiles") nextMode = "content";
+          else if (current === "content") nextMode = "medium-icons";
+          else if (current === "medium-icons") nextMode = "large-icons";
+          else if (current === "large-icons") nextMode = "extra-large-icons";
+          else if (current === "small-icons") nextMode = "medium-icons";
+          else if (current === "extra-large-icons") nextMode = "extra-large-icons";
+          else nextMode = "large-icons";
+
+          const updatedSettings = { ...s, defaultViewMode: nextMode };
+          api.updateSettings(updatedSettings).catch(console.error);
+          return nextMode;
+        });
+        return s;
+      }
+
+      setViewMode("grid");
+      setGridZoom((z) => {
+        const next = EXPLORER_STEPS.find((st) => st > z) ?? Math.min(MAX_ZOOM, z + ZOOM_STEP);
+        const clamped = Math.min(MAX_ZOOM, next);
+        const updatedSettings = { ...s, gridPixelSize: clamped, defaultViewMode: "grid" as const };
+        api.updateSettings(updatedSettings).catch(console.error);
+        return clamped;
       });
-      return clamped;
+      return s;
     });
   }, []);
 
   const handleZoomOut = useCallback(() => {
-    setGridZoom((z) => {
-      if (z <= MIN_ZOOM) {
-        setViewMode("details");
-        setSettings((s) => {
-          const newSettings = { ...s, defaultViewMode: "details" as const };
-          api.updateSettings(newSettings).catch(console.error);
-          return newSettings;
+    setSettings((s) => {
+      if (s.windowsExplorerMode) {
+        setViewMode((current) => {
+          let prevMode: ViewMode = current;
+          if (current === "extra-large-icons") prevMode = "large-icons";
+          else if (current === "large-icons") prevMode = "medium-icons";
+          else if (current === "medium-icons") prevMode = "content";
+          else if (current === "content") prevMode = "tiles";
+          else if (current === "tiles") prevMode = "list";
+          else if (current === "list") prevMode = "details";
+          else if (current === "small-icons") prevMode = "details";
+          else if (current === "details") prevMode = "details";
+          else prevMode = "details";
+
+          const updatedSettings = { ...s, defaultViewMode: prevMode };
+          api.updateSettings(updatedSettings).catch(console.error);
+          return prevMode;
         });
-        return MIN_ZOOM;
+        return s;
       }
-      const clamped = Math.max(MIN_ZOOM, z - ZOOM_STEP);
-      setSettings((s) => {
-        const newSettings = { ...s, gridPixelSize: clamped };
-        api.updateSettings(newSettings).catch(console.error);
-        return newSettings;
+
+      setGridZoom((z) => {
+        const prevSteps = EXPLORER_STEPS.filter((st) => st < z);
+        const prev = prevSteps.length > 0 ? prevSteps[prevSteps.length - 1] : z - ZOOM_STEP;
+        if (prev < 48) {
+          setViewMode("details");
+          const updatedSettings = { ...s, defaultViewMode: "details" as const };
+          api.updateSettings(updatedSettings).catch(console.error);
+          return MIN_ZOOM;
+        }
+        const clamped = Math.max(MIN_ZOOM, prev);
+        const updatedSettings = { ...s, gridPixelSize: clamped };
+        api.updateSettings(updatedSettings).catch(console.error);
+        return clamped;
       });
-      return clamped;
+      return s;
     });
   }, []);
 
@@ -185,6 +237,7 @@ export const App: React.FC = () => {
   }, []);
 
   // Globally intercept Ctrl + Mouse Wheel for instant pixel-based zoom across the file view
+  // and prevent browser/webview whole-window viewport zoom
   useEffect(() => {
     let lastWheelTime = 0;
 
@@ -192,11 +245,10 @@ export const App: React.FC = () => {
       if (e.ctrlKey) {
         // Prevent default browser/webview whole-window zoom
         e.preventDefault();
-        e.stopPropagation();
 
         const now = Date.now();
-        // 50ms throttle prevents runaway zoom from free-spinning inertia wheels while triggering instantly on every single notch
-        if (now - lastWheelTime < 50) return;
+        // 60ms throttle prevents runaway zoom from free-spinning inertia wheels while triggering on every single physical notch
+        if (now - lastWheelTime < 60) return;
         lastWheelTime = now;
 
         if (e.deltaY < 0) {
@@ -207,12 +259,11 @@ export const App: React.FC = () => {
       }
     };
 
+    // Single capture listener on window
     window.addEventListener("wheel", handleGlobalWheel, { passive: false, capture: true });
-    document.addEventListener("wheel", handleGlobalWheel, { passive: false, capture: true });
 
     return () => {
       window.removeEventListener("wheel", handleGlobalWheel, { capture: true });
-      document.removeEventListener("wheel", handleGlobalWheel, { capture: true });
     };
   }, [handleZoomIn, handleZoomOut]);
 
@@ -238,7 +289,14 @@ export const App: React.FC = () => {
       }
       if (s.gridPixelSize) setGridZoom(s.gridPixelSize);
       if (s.previewPaneOpen !== undefined) setPreviewPaneOpen(s.previewPaneOpen);
-      applyTheme(updated.theme, updated.accentColor, updated.fontFamily, updated.fontSize, lang);
+      applyTheme(
+        updated.theme,
+        updated.accentColor,
+        updated.fontFamily,
+        updated.fontSize,
+        lang,
+        updated.windowsExplorerMode
+      );
     });
 
     api.listJobs().then(setJobs);
@@ -274,7 +332,8 @@ export const App: React.FC = () => {
     accentColor?: string,
     fontFamily?: string,
     fontSize?: string,
-    language?: SupportedLanguage
+    language?: SupportedLanguage,
+    windowsExplorerMode?: boolean
   ) => {
     if (theme === "system") {
       const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -293,12 +352,40 @@ export const App: React.FC = () => {
       document.documentElement.setAttribute("data-size", fontSize);
     }
 
+    document.documentElement.setAttribute(
+      "data-explorer-mode",
+      windowsExplorerMode ? "true" : "false"
+    );
+
     if (language) {
       const langInfo = getLanguageInfo(language);
       document.documentElement.setAttribute("lang", langInfo.code);
       document.documentElement.setAttribute("dir", langInfo.dir);
     }
   };
+
+  const toggleWindowsExplorerMode = useCallback(() => {
+    setSettings((s) => {
+      const updated = !s.windowsExplorerMode;
+      const targetMode: ViewMode = updated ? "details" : s.defaultViewMode;
+      const newSettings: AppSettings = {
+        ...s,
+        windowsExplorerMode: updated,
+        defaultViewMode: targetMode,
+      };
+      setViewMode(targetMode);
+      applyTheme(
+        newSettings.theme,
+        newSettings.accentColor,
+        newSettings.fontFamily,
+        newSettings.fontSize,
+        newSettings.language,
+        updated
+      );
+      api.updateSettings(newSettings).catch(console.error);
+      return newSettings;
+    });
+  }, []);
 
   const loadDirectory = useCallback((path: string) => {
     api
@@ -647,6 +734,31 @@ export const App: React.FC = () => {
       ) {
         e.preventDefault();
         setViewMode("details");
+      } else if (isTriggered("view.extra_large_icons")) {
+        e.preventDefault();
+        setViewMode("extra-large-icons");
+        setGridZoom(256);
+      } else if (isTriggered("view.large_icons")) {
+        e.preventDefault();
+        setViewMode("large-icons");
+        setGridZoom(96);
+      } else if (isTriggered("view.medium_icons")) {
+        e.preventDefault();
+        setViewMode("medium-icons");
+        setGridZoom(48);
+      } else if (isTriggered("view.small_icons")) {
+        e.preventDefault();
+        setViewMode("small-icons");
+        setGridZoom(24);
+      } else if (isTriggered("view.list")) {
+        e.preventDefault();
+        setViewMode("list");
+      } else if (isTriggered("view.tiles")) {
+        e.preventDefault();
+        setViewMode("tiles");
+      } else if (isTriggered("view.content")) {
+        e.preventDefault();
+        setViewMode("content");
       } else if (
         isTriggered("view.grid") ||
         isTriggered("view.grid_shift")
@@ -819,6 +931,48 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleGroupTabs = async () => {
+    const defaultName = tabs.map((t) => t.title || "Tab").join(" + ");
+    const name = window.prompt("Enter a name for this tab group / workspace:", defaultName) || defaultName;
+    if (!name.trim()) return;
+
+    try {
+      const workspaceTabs = tabs.map((t) => ({
+        id: t.id,
+        path: t.path,
+        title: t.title,
+      }));
+      await api.saveWorkspace(name, workspaceTabs, activeTabId, false);
+      alert(`Workspace "${name}" saved successfully with ${tabs.length} tabs!`);
+    } catch (e) {
+      console.error(e);
+      alert(`Could not save workspace: ${e}`);
+    }
+  };
+
+  const handleRestoreWorkspace = (ws: Workspace) => {
+    if (!ws.tabs || ws.tabs.length === 0) return;
+    const newTabs: TabItem[] = ws.tabs.map((t) => ({
+      id: t.id,
+      path: t.path,
+      title: t.title,
+      history: [t.path],
+      historyIndex: 0,
+    }));
+    setTabs(newTabs);
+    setActiveTabId(ws.activeTabId || newTabs[0].id);
+  };
+
+  const handleAdminElevation = async () => {
+    if (confirm("Request Administrator privileges? Windows User Account Control (UAC) will prompt for confirmation.")) {
+      try {
+        await api.requestAdminElevation();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  };
+
   const currentDict = getDictionary(settings.language || "en");
 
   return (
@@ -844,6 +998,8 @@ export const App: React.FC = () => {
         onSelectTab={setActiveTabId}
         onCloseTab={handleCloseTab}
         onNewTab={handleNewTab}
+        onGroupTabs={handleGroupTabs}
+        onOpenWorkspaces={() => setIsWorkspacesOpen(true)}
       />
 
       <AddressBar
@@ -872,6 +1028,7 @@ export const App: React.FC = () => {
           onOpenSettings={() => setIsSettingsOpen(true)}
           onOpenJobs={() => setIsJobsOpen(true)}
           onOpenShortcuts={() => setIsShortcutModalOpen(true)}
+          onOpenInExplorer={() => api.openItemWith(activeTab.path)}
           activeJobCount={activeJobCount}
         />
 
@@ -894,6 +1051,41 @@ export const App: React.FC = () => {
             onZoomReset={handleZoomReset}
             previewPaneOpen={previewPaneOpen}
             onTogglePreviewPane={togglePreviewPane}
+            windowsExplorerMode={settings.windowsExplorerMode}
+            onToggleWindowsExplorerMode={toggleWindowsExplorerMode}
+            selectedCount={selectedPaths.length}
+            hasClipboard={!!clipboard}
+            onCut={handleCut}
+            onCopy={handleCopy}
+            onPaste={handlePaste}
+            onRename={() => selectedPaths.length === 1 && setRenamingPath(selectedPaths[0])}
+            onDelete={() => handleDelete(false)}
+            onShare={() => {
+              if (selectedPaths.length > 0) {
+                navigator.clipboard.writeText(selectedPaths.join("\n"));
+              }
+            }}
+            onNewFolder={handleNewFolder}
+            onNewFile={handleNewFile}
+            onRefresh={refreshCurrentDir}
+            onOpenInExplorer={() => api.openItemWith(activeTab.path)}
+            onOpenSettings={() => setIsSettingsOpen(true)}
+            showHiddenFiles={settings.showHiddenFiles}
+            onToggleShowHidden={() => {
+              const ns = { ...settings, showHiddenFiles: !settings.showHiddenFiles };
+              setSettings(ns);
+              api.updateSettings(ns);
+            }}
+            showExtensions={settings.showFileExtensions}
+            onToggleShowExtensions={() => {
+              const ns = { ...settings, showFileExtensions: !settings.showFileExtensions };
+              setSettings(ns);
+              api.updateSettings(ns);
+            }}
+            onBakItUp={() => setIsBakItUpOpen(true)}
+            onGroupTabs={handleGroupTabs}
+            onAdminMode={handleAdminElevation}
+            onChangeAttributes={() => setIsAttributesOpen(true)}
           />
 
           <div className={styles.contentArea}>
@@ -919,6 +1111,8 @@ export const App: React.FC = () => {
               showExtensions={settings.showFileExtensions}
               showHidden={settings.showHiddenFiles}
               gridZoom={gridZoom}
+              currentPath={activeTab.path}
+              windowsExplorerMode={settings.windowsExplorerMode}
               onZoomIn={handleZoomIn}
               onZoomOut={handleZoomOut}
               onGoUp={navigateUp}
@@ -935,10 +1129,51 @@ export const App: React.FC = () => {
           </div>
 
           <div className={styles.statusBar}>
-            <span>{currentDict.view.itemsCount.replace("{count}", String(entries.length))}</span>
-            {selectedPaths.length > 0 && (
-              <span>{currentDict.view.selectedCount.replace("{count}", String(selectedPaths.length))}</span>
-            )}
+            <div className={styles.statusInfo}>
+              <span>{currentDict.view.itemsCount.replace("{count}", String(entries.length))}</span>
+              {selectedPaths.length > 0 && (
+                <span>
+                  {" | "}
+                  {currentDict.view.selectedCount.replace("{count}", String(selectedPaths.length))}
+                  {"  "}
+                  {formatBytes(
+                    entries
+                      .filter((e) => selectedPaths.includes(e.path))
+                      .reduce((acc, cur) => acc + (cur.size || 0), 0)
+                  )}
+                </span>
+              )}
+            </div>
+
+            <div className={styles.statusViewButtons}>
+              <button
+                className={`${styles.statusViewBtn} ${viewMode === "details" ? styles.active : ""}`}
+                onClick={() => {
+                  setViewMode("details");
+                  const newSettings = { ...settings, defaultViewMode: "details" as const };
+                  setSettings(newSettings);
+                  api.updateSettings(newSettings).catch(console.error);
+                }}
+                title={currentDict.view.details}
+                aria-label={currentDict.view.details}
+              >
+                <List size={14} />
+              </button>
+              <button
+                className={`${styles.statusViewBtn} ${viewMode === "large-icons" || viewMode === "grid" ? styles.active : ""}`}
+                onClick={() => {
+                  const targetMode: ViewMode = settings.windowsExplorerMode ? "large-icons" : "grid";
+                  setViewMode(targetMode);
+                  const newSettings: AppSettings = { ...settings, defaultViewMode: targetMode };
+                  setSettings(newSettings);
+                  api.updateSettings(newSettings).catch(console.error);
+                }}
+                title={currentDict.view.grid}
+                aria-label={currentDict.view.grid}
+              >
+                <LayoutGrid size={14} />
+              </button>
+            </div>
           </div>
         </main>
       </div>
@@ -1004,6 +1239,13 @@ export const App: React.FC = () => {
                 : activeTab.path;
             api.showItemProperties(p);
           }}
+          onOpenInExplorer={() => {
+            const p =
+              contextMenu.selected.length > 0
+                ? contextMenu.selected[0].path
+                : activeTab.path;
+            api.openItemDefault(p);
+          }}
           onRefresh={refreshCurrentDir}
           viewMode={viewMode}
           onViewModeChange={(m) => {
@@ -1014,6 +1256,9 @@ export const App: React.FC = () => {
           }}
           prefs={viewPreferences}
           onPrefsChange={handlePrefsChange}
+          windowsExplorerMode={settings.windowsExplorerMode}
+          onBakItUp={() => setIsBakItUpOpen(true)}
+          onChangeAttributes={() => setIsAttributesOpen(true)}
         />
       )}
 
@@ -1052,7 +1297,8 @@ export const App: React.FC = () => {
             newSettings.accentColor,
             newSettings.fontFamily,
             newSettings.fontSize,
-            newSettings.language
+            newSettings.language,
+            newSettings.windowsExplorerMode
           );
           setViewMode(newSettings.defaultViewMode);
           api.updateSettings(newSettings);
@@ -1087,6 +1333,34 @@ export const App: React.FC = () => {
           api.updateSettings(newSettings);
         }}
       />
+
+      {isBakItUpOpen && (
+        <BakItUpModal
+          selectedPaths={selectedPaths}
+          currentDirectory={activeTab.path}
+          onClose={() => setIsBakItUpOpen(false)}
+          onRefresh={refreshCurrentDir}
+        />
+      )}
+
+      {isAttributesOpen && (
+        <AttributesModal
+          selectedItems={
+            selectedPaths.length > 0
+              ? entries.filter((e: FileEntry) => selectedPaths.includes(e.path))
+              : []
+          }
+          onClose={() => setIsAttributesOpen(false)}
+          onRefresh={refreshCurrentDir}
+        />
+      )}
+
+      {isWorkspacesOpen && (
+        <WorkspaceModal
+          onClose={() => setIsWorkspacesOpen(false)}
+          onRestoreWorkspace={handleRestoreWorkspace}
+        />
+      )}
     </div>
     </I18nProvider>
   );

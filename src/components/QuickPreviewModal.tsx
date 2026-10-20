@@ -12,6 +12,7 @@ import {
   Film,
   Image as ImageIcon,
   FileText,
+  Music,
 } from "lucide-react";
 import { FileEntry, MediaPreviewInfo } from "../types";
 import { api } from "../api";
@@ -29,7 +30,8 @@ interface QuickPreviewModalProps {
 
 const MEDIA_EXTS = new Set([
   "jpg", "jpeg", "png", "webp", "bmp", "gif", "tiff", "tif", "svg",
-  "mp4", "mkv", "mov", "webm", "avi", "wmv", "m4v"
+  "mp4", "mkv", "mov", "webm", "avi", "wmv", "m4v",
+  "mp3", "flac", "m4a", "aac", "ogg", "wav", "wma", "aiff", "alac", "opus"
 ]);
 
 export const QuickPreviewModal: React.FC<QuickPreviewModalProps> = ({
@@ -165,6 +167,7 @@ export const QuickPreviewModal: React.FC<QuickPreviewModalProps> = ({
   const ext = currentEntry?.ext.toLowerCase() || "";
   const isVideo = ["mp4", "mkv", "mov", "webm", "avi", "wmv", "m4v"].includes(ext);
   const isImage = ["jpg", "jpeg", "png", "webp", "bmp", "gif", "tiff", "tif", "svg"].includes(ext);
+  const isAudio = ["mp3", "flac", "m4a", "aac", "ogg", "wav", "wma", "aiff", "alac", "opus"].includes(ext) || previewInfo?.mediaType === "audio";
 
   const mediaSrc = currentPath ? convertFileSrc(currentPath) : "";
 
@@ -181,11 +184,13 @@ export const QuickPreviewModal: React.FC<QuickPreviewModalProps> = ({
               <Film size={18} color="var(--accent)" />
             ) : isImage ? (
               <ImageIcon size={18} color="var(--accent)" />
+            ) : isAudio ? (
+              <Music size={18} color="var(--accent)" />
             ) : (
               <FileText size={18} color="var(--text-muted)" />
             )}
             <span className={`${styles.fileName} fileName`} title={currentEntry?.name} dir="ltr">
-              {currentEntry?.name || "Preview"}
+              {previewInfo?.title ? `${previewInfo.title}${previewInfo.artist ? ` - ${previewInfo.artist}` : ""}` : currentEntry?.name || "Preview"}
             </span>
             {mediaList.length > 1 && (
               <span className={styles.badge}>
@@ -287,7 +292,7 @@ export const QuickPreviewModal: React.FC<QuickPreviewModalProps> = ({
 
           {isImage ? (
             <img
-              src={mediaSrc || previewInfo?.thumbnailUrl || ""}
+              src={previewInfo?.thumbnailUrl || mediaSrc || ""}
               alt={currentEntry?.name || ""}
               className={styles.imageElement}
               style={{
@@ -296,6 +301,11 @@ export const QuickPreviewModal: React.FC<QuickPreviewModalProps> = ({
                   : `translate(${pan.x}px, ${pan.y}px) scale(${zoomLevel}) rotate(${rotation}deg)`,
               }}
               draggable={false}
+              onError={(e) => {
+                if (previewInfo?.thumbnailUrl && e.currentTarget.src !== previewInfo.thumbnailUrl) {
+                  e.currentTarget.src = previewInfo.thumbnailUrl;
+                }
+              }}
             />
           ) : isVideo ? (
             videoError ? (
@@ -312,8 +322,12 @@ export const QuickPreviewModal: React.FC<QuickPreviewModalProps> = ({
               </div>
             ) : (
               <video
+                key={currentPath}
                 controls
                 autoPlay
+                playsInline
+                preload="metadata"
+                poster={previewInfo?.thumbnailUrl || undefined}
                 className={styles.videoElement}
                 src={mediaSrc}
                 onError={() => setVideoError(true)}
@@ -321,6 +335,38 @@ export const QuickPreviewModal: React.FC<QuickPreviewModalProps> = ({
                 Your player does not support this video.
               </video>
             )
+          ) : isAudio ? (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
+              {previewInfo?.thumbnailUrl ? (
+                <img
+                  src={previewInfo.thumbnailUrl}
+                  alt={previewInfo?.title || currentEntry?.name}
+                  style={{ maxHeight: 340, maxWidth: 340, borderRadius: 8, boxShadow: "0 8px 24px rgba(0,0,0,0.35)", objectFit: "contain" }}
+                />
+              ) : (
+                <div style={{ width: 160, height: 160, borderRadius: "50%", background: "var(--bg-panel)", border: "2px solid var(--border-subtle)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Music size={64} color="var(--accent)" strokeWidth={1.5} />
+                </div>
+              )}
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text-main)", marginBottom: 4 }}>
+                  {previewInfo?.title || currentEntry?.name}
+                </div>
+                {previewInfo?.artist && (
+                  <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
+                    {previewInfo.artist} {previewInfo?.album ? `• ${previewInfo.album}` : ""}
+                  </div>
+                )}
+              </div>
+              <audio
+                key={currentPath}
+                controls
+                autoPlay
+                style={{ width: 320, maxWidth: "90%", outline: "none" }}
+                src={mediaSrc}
+                preload="metadata"
+              />
+            </div>
           ) : (
             <div className={styles.videoErrorNotice}>
               <FileText size={48} color="var(--text-muted)" />

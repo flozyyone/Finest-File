@@ -107,3 +107,38 @@
   left: auto;
   right: calc(100% + 2px);
 }
+
+/* Windows 11 Context Menu Top Action Glyphs */
+.win11TopRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 3px 4px 5px 4px;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 4px;
+  gap: 2px;
+}
+
+.topRowBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 28px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.1s ease;
+}
+
+.topRowBtn:hover:not(:disabled) {
+  background-color: var(--bg-hover);
+}
+
+.topRowBtn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
